@@ -300,6 +300,29 @@ test("distance normalization gives equal behavior at different hand scales", () 
   );
 });
 
+test("noisy landmark depth cannot hide a visible fingertip contact", () => {
+  const tracker = new ContactTracker();
+  tracker.processFrame(frame(0, [hand("left")]));
+  tracker.processFrame(frame(1, [hand("left")]));
+
+  const touching = hand("left", { ratios: { index: 0.2 } });
+  touching.landmarks[4].z = -0.5;
+  touching.landmarks[TIP_INDEX.index].z = 0.5;
+
+  tracker.processFrame(frame(2, [touching]));
+  const activated = tracker.processFrame(frame(3, [touching]));
+
+  assert.equal(
+    eventsFor(activated, "left_index", TRACKING_STATES.ACTIVATED).length,
+    1,
+  );
+  assert.ok(
+    Math.abs(
+      snapshotFor(activated, "left_index").distanceRatio - 0.2,
+    ) < 1e-9,
+  );
+});
+
 test("low confidence behaves as hand loss and clears contact progress", () => {
   const tracker = new ContactTracker({ minConfidence: 0.75 });
   tracker.processFrame(frame(0, [hand("left")]));

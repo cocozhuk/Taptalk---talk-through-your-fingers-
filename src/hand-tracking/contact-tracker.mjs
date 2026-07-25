@@ -111,11 +111,13 @@ function copyPoint(point) {
   return copy;
 }
 
-function distance(first, second) {
+// Contact is judged in the camera plane. MediaPipe's landmark depth is useful
+// for pose estimation, but it is too noisy around occluded touching fingertips
+// to decide whether the user deliberately closed a thumb-finger gap.
+function planarDistance(first, second) {
   const dx = first.x - second.x;
   const dy = first.y - second.y;
-  const dz = (first.z ?? 0) - (second.z ?? 0);
-  return Math.hypot(dx, dy, dz);
+  return Math.hypot(dx, dy);
 }
 
 function observationConfidence(hand) {
@@ -361,7 +363,7 @@ export class ContactTracker {
       pointConfidence(middleMcp),
       pointConfidence(fingertip),
     );
-    const palmScale = distance(wrist, middleMcp);
+    const palmScale = planarDistance(wrist, middleMcp);
 
     if (
       confidence < this.options.minConfidence ||
@@ -377,7 +379,7 @@ export class ContactTracker {
       fingertip: copyPoint(fingertip),
       thumbTip: copyPoint(thumbTip),
       palmScale,
-      distanceRatio: distance(thumbTip, fingertip) / palmScale,
+      distanceRatio: planarDistance(thumbTip, fingertip) / palmScale,
     };
   }
 

@@ -13,7 +13,11 @@ export class MediaPipeHandTracker {
     onSnapshots,
     onError,
     onStatus,
-    contactTracker = new ContactTracker({ minConfidence: 0.35 }),
+    contactTracker = new ContactTracker({
+      contactThreshold: 0.42,
+      separationThreshold: 0.62,
+      minConfidence: 0.35,
+    }),
     createLandmarker = createDefaultLandmarker,
     clock = () => performance.now(),
     requestFrame = (callback) => requestAnimationFrame(callback),

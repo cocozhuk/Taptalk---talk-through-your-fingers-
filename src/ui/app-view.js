@@ -16,6 +16,14 @@ const DEMO_POSITIONS = Object.freeze({
   right_pinky: [12, 32],
 });
 
+const CONTACT_STATE_LABELS = Object.freeze({
+  separated: "ready",
+  approaching: "getting closer",
+  contact_candidate: "contact — hold briefly",
+  activated: "activated",
+  held: "held — separate to rearm",
+});
+
 export class AppView {
   constructor(documentRef = document) {
     this.document = documentRef;
@@ -43,6 +51,7 @@ export class AppView {
 
     this.renderFingerMarkers();
     this.renderAssignmentFields();
+    this.contactMeterKey = "";
   }
 
   renderFingerMarkers() {
@@ -194,6 +203,40 @@ export class AppView {
         );
       }
     }
+    this.showContactMeter(snapshots);
+  }
+
+  showContactMeter(snapshots) {
+    const closest = snapshots
+      .filter(
+        (snapshot) =>
+          snapshot.visible && Number.isFinite(snapshot.distanceRatio),
+      )
+      .sort(
+        (first, second) =>
+          first.distanceRatio - second.distanceRatio,
+      )[0];
+    if (!closest) {
+      return;
+    }
+
+    const roundedGap = Math.round(closest.distanceRatio * 20) / 20;
+    const stateLabel =
+      CONTACT_STATE_LABELS[closest.state] ?? "waiting for separation";
+    const key = `${closest.fingerId}:${roundedGap}:${stateLabel}`;
+    if (key === this.contactMeterKey) {
+      return;
+    }
+    this.contactMeterKey = key;
+
+    const heading = this.document.createElement("strong");
+    heading.textContent = "Contact meter: ";
+    this.elements.trackingNote.replaceChildren(
+      heading,
+      this.document.createTextNode(
+        `${FINGER_LABELS[closest.fingerId]} · ${stateLabel} · gap ${roundedGap.toFixed(2)}.`,
+      ),
+    );
   }
 
   setTrackingMode(mode) {
@@ -249,6 +292,21 @@ export class AppView {
     this.elements.expression.textContent = activation.expression;
     this.elements.expressionDetail.textContent =
       `${FINGER_LABELS[activation.fingerId]} · ${identity.name} · ${LANGUAGES[activation.language]}`;
+  }
+
+  showSpeechPending(activation) {
+    this.elements.cameraMessage.textContent =
+      `Contact detected: “${activation.expression}”. Starting voice…`;
+  }
+
+  showSpeechStarted(activation) {
+    this.elements.cameraMessage.textContent =
+      `Voice started: “${activation.expression}”. Separate the finger to rearm it.`;
+  }
+
+  showSpeechError(activation, error) {
+    this.elements.cameraMessage.textContent =
+      `Contact detected for “${activation.expression}”, but audio failed: ${error.message}`;
   }
 
   showLatency(visual, audio) {

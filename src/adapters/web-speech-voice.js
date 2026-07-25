@@ -54,6 +54,7 @@ export class WebSpeechVoicePort {
       // Requests are submitted immediately and independently. Some browser
       // speech engines still serialize them; the production voice adapter must
       // replace this fallback to guarantee overlapping playback.
+      this.speechSynthesis.resume?.();
       this.speechSynthesis.speak(utterance);
     });
   }
@@ -67,4 +68,3 @@ export class WebSpeechVoicePort {
     );
   }
 }
-

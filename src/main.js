@@ -31,16 +31,19 @@ const dispatcher = new ActivationDispatcher({
   voicePort,
   onActivation: (activation) => {
     view.showActivation(activation);
+    view.showSpeechPending(activation);
     requestAnimationFrame(() => {
       latency.record("visual", performance.now() - activation.confirmedAtMs);
       renderLatency();
     });
   },
   onAudibleStart: (activation, startedAtMs) => {
+    view.showSpeechStarted(activation);
     latency.record("audio", startedAtMs - activation.confirmedAtMs);
     renderLatency();
   },
-  onSpeechError: (_activation, error) => {
+  onSpeechError: (activation, error) => {
+    view.showSpeechError(activation, error);
     view.setSettingsStatus(error.message, "error");
   },
 });
