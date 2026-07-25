@@ -220,6 +220,30 @@ export class AppView {
     }
   }
 
+  showTrackingStatus({ phase, detectedHands, trackedHands }) {
+    if (phase === "ready") {
+      this.elements.cameraMessage.textContent =
+        "Hand model ready. Hold one full hand inside the frame.";
+      return;
+    }
+    if (phase !== "tracking") {
+      return;
+    }
+    if (trackedHands > 0) {
+      const noun = trackedHands === 1 ? "hand" : "hands";
+      this.elements.cameraMessage.textContent =
+        `${trackedHands} ${noun} tracked locally. Touch a fingertip to its thumb to speak.`;
+      return;
+    }
+    if (detectedHands > 0) {
+      this.elements.cameraMessage.textContent =
+        "Hand landmarks were found, but their left/right label was unavailable. Keep the palm fully visible and try again.";
+      return;
+    }
+    this.elements.cameraMessage.textContent =
+      "0 hands detected. Show the full palm and wrist, face the palm toward the camera, and use even lighting.";
+  }
+
   showActivation(activation) {
     const identity = VOICE_IDENTITIES[activation.voiceId];
     this.elements.expression.textContent = activation.expression;

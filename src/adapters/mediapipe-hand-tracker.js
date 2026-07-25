@@ -12,7 +12,8 @@ export class MediaPipeHandTracker {
     onEvents,
     onSnapshots,
     onError,
-    contactTracker = new ContactTracker(),
+    onStatus,
+    contactTracker = new ContactTracker({ minConfidence: 0.35 }),
     createLandmarker = createDefaultLandmarker,
     clock = () => performance.now(),
     requestFrame = (callback) => requestAnimationFrame(callback),
@@ -22,6 +23,7 @@ export class MediaPipeHandTracker {
     this.onEvents = onEvents ?? (() => {});
     this.onSnapshots = onSnapshots ?? (() => {});
     this.onError = onError ?? (() => {});
+    this.onStatus = onStatus ?? (() => {});
     this.contactTracker = contactTracker;
     this.createLandmarker = createLandmarker;
     this.clock = clock;
@@ -36,6 +38,7 @@ export class MediaPipeHandTracker {
     this.videoElement = null;
     this.running = false;
     this.animationRequest = null;
+    this.lastStatusKey = "";
   }
 
   async start(videoElement) {
@@ -50,6 +53,11 @@ export class MediaPipeHandTracker {
     this.lastVideoTime = -1;
     this.videoElement = videoElement;
     this.running = true;
+    this.emitStatus({
+      phase: "ready",
+      detectedHands: 0,
+      trackedHands: 0,
+    });
     this.animationRequest = this.requestFrame(this.frameLoop);
   }
 
@@ -88,13 +96,21 @@ export class MediaPipeHandTracker {
           this.videoElement,
           timestampMs,
         );
+        const hands = mapMediaPipeResult(result);
         this.frameId += 1;
         const tracked = this.contactTracker.processFrame({
           timestampMs,
           frameId: this.frameId,
-          hands: mapMediaPipeResult(result),
+          hands,
         });
         this.onSnapshots(tracked.fingers);
+        this.emitStatus({
+          phase: "tracking",
+          detectedHands: Array.isArray(result?.landmarks)
+            ? result.landmarks.length
+            : 0,
+          trackedHands: hands.length,
+        });
         const events = translateContactEvents(
           tracked.events,
           this.sessionId,
@@ -116,6 +132,19 @@ export class MediaPipeHandTracker {
 
     this.animationRequest = this.requestFrame(this.frameLoop);
   }
+
+  emitStatus(status) {
+    const statusKey = [
+      status.phase,
+      status.detectedHands,
+      status.trackedHands,
+    ].join(":");
+    if (statusKey === this.lastStatusKey) {
+      return;
+    }
+    this.lastStatusKey = statusKey;
+    this.onStatus(status);
+  }
 }
 
 export function mapMediaPipeResult(result) {
@@ -130,8 +159,8 @@ export function mapMediaPipeResult(result) {
 
   return landmarks.flatMap((points, index) => {
     const category = handedness[index]?.[0];
-    const semanticHand = category?.categoryName?.toLowerCase();
-    if (semanticHand !== "left" && semanticHand !== "right") {
+    const semanticHand = normalizeMediaPipeHandedness(category);
+    if (!semanticHand) {
       return [];
     }
     const confidence = Number.isFinite(category?.score)
@@ -146,6 +175,37 @@ export function mapMediaPipeResult(result) {
       },
     ];
   });
+}
+
+export function normalizeMediaPipeHandedness(category) {
+  if (!category || typeof category !== "object") {
+    return null;
+  }
+
+  for (const candidate of [
+    category.categoryName,
+    category.displayName,
+    category.label,
+  ]) {
+    if (typeof candidate !== "string") {
+      continue;
+    }
+    const normalized = candidate.trim().toLowerCase();
+    if (normalized === "left" || normalized.includes("left hand")) {
+      return "left";
+    }
+    if (normalized === "right" || normalized.includes("right hand")) {
+      return "right";
+    }
+  }
+
+  if (category.index === 0) {
+    return "left";
+  }
+  if (category.index === 1) {
+    return "right";
+  }
+  return null;
 }
 
 export function translateContactEvents(events, sessionId) {
@@ -189,8 +249,8 @@ async function createDefaultLandmarker() {
     },
     runningMode: "VIDEO",
     numHands: 2,
-    minHandDetectionConfidence: 0.55,
-    minHandPresenceConfidence: 0.55,
-    minTrackingConfidence: 0.5,
+    minHandDetectionConfidence: 0.35,
+    minHandPresenceConfidence: 0.35,
+    minTrackingConfidence: 0.4,
   });
 }

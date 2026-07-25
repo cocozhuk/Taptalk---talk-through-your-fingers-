@@ -62,6 +62,7 @@ const visionTracker = new MediaPipeHandTracker({
     processTrackingEvents(events);
   },
   onSnapshots: (snapshots) => view.applyFingerSnapshots(snapshots),
+  onStatus: (status) => view.showTrackingStatus(status),
   onError: (error) => {
     visionTracker.stop();
     camera.stop(view.elements.cameraPreview);

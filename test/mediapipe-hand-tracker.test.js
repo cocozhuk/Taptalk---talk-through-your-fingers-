@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   mapMediaPipeResult,
+  normalizeMediaPipeHandedness,
   translateContactEvents,
 } from "../src/adapters/mediapipe-hand-tracker.js";
 
@@ -47,6 +48,27 @@ test("ignores observations without a supported handedness label", () => {
     }),
     [],
   );
+});
+
+test("accepts display-name and category-index handedness variants", () => {
+  assert.equal(
+    normalizeMediaPipeHandedness({ displayName: "Right Hand" }),
+    "right",
+  );
+  assert.equal(normalizeMediaPipeHandedness({ index: 0 }), "left");
+  assert.equal(normalizeMediaPipeHandedness({ index: 1 }), "right");
+  assert.equal(normalizeMediaPipeHandedness({ index: 2 }), null);
+});
+
+test("maps the deprecated handednesses result field", () => {
+  const mapped = mapMediaPipeResult({
+    landmarks: [landmarks()],
+    handednesses: [[{ displayName: "Left hand", score: 0.72 }]],
+  });
+
+  assert.equal(mapped.length, 1);
+  assert.equal(mapped[0].handedness, "left");
+  assert.equal(mapped[0].handednessConfidence, 0.72);
 });
 
 test("translates only activation and separation transitions", () => {
