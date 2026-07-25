@@ -1,11 +1,13 @@
 # TapTalk Product Contract
 
-Status: baseline for the first prototype
+Status: architecture-resolved contract for the first prototype (2026-07-25)
 
 This document is the shared source of truth for every TapTalk specialist. A
 specialist may propose a change, but only the Product Architecture task owns
 changes to this contract. The Integration task records accepted changes in the
-main project.
+main project. Detailed normative behavior and subsystem interfaces live in
+[`ARCHITECTURE_SPEC.md`](ARCHITECTURE_SPEC.md). Decision source and status live
+in [`DECISIONS.md`](DECISIONS.md).
 
 ## Product purpose
 
@@ -48,85 +50,108 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 
 ## Expression validation
 
+Every saved assignment has an explicit `en` or `zh` language. That declared
+language is the source of truth for validation and voice routing; the prototype
+does not guess or silently change it. Text is normalized to Unicode NFC and
+trimmed before validation.
+
 ### English
 
 - One to five words.
 - A word is a non-empty token separated by whitespace after trimming.
-- An English expression must not contain Han-script characters.
+- English accepts Latin-script words, including accented letters and internal
+  apostrophes or hyphens.
+- A word may have one terminal comma, period, exclamation mark, or question
+  mark. Punctuation does not add a unit.
+- Han characters, non-Latin letters, digits, emoji, controls, and unsupported
+  symbols are invalid.
 
 ### Mandarin Chinese
 
 - One to five Chinese characters.
-- Each Han-script character counts as one word/unit.
-- A Mandarin expression must not contain Latin-script words.
+- Each Han-script Unicode code point counts as one word/unit.
+- Internal comma/enumeration punctuation and one terminal sentence mark are
+  permitted and do not add units.
+- Internal whitespace, Latin or other non-Han letters, digits, emoji, controls,
+  and unsupported symbols are invalid.
 
 ### Mixed-script input
 
 An individual expression containing both English and Mandarin lexical content
-is invalid for the first prototype. The interface must explain that languages
-can be mixed across fingers, but not inside one finger assignment.
+is invalid. The interface must explain that languages can be mixed across
+fingers, but not inside one finger assignment. Script validation does not claim
+to identify natural language: Han-only text declared as `zh` is routed as
+Mandarin.
 
-Punctuation, digits, emoji, and language-detection edge cases remain an
-architecture decision. Until the architect refines the rule, the safest
-prototype behavior is to reject ambiguous input with a clear validation
-message.
+The exact accepted grammars, normalization, validation codes, error priority,
+and examples are normative in the Architecture Specification.
 
 ## Contact and rearming behavior
 
-Each finger has a conceptual state machine:
+Each finger uses this durable state machine:
 
 ```text
-not visible
-  -> separated
+untracked
+  -> rearm required
+  -> separated and armed
   -> approaching
   -> contact candidate
-  -> contact confirmed and activated
-  -> held
+  -> activation confirmed
+  -> held and disarmed
   -> separated and rearmed
 ```
 
 - One sustained touch produces only one activation.
-- A finger becomes eligible again only after confirmed separation.
+- Contact requires at least 60 ms and two usable contact samples.
+- A finger becomes eligible initially and after activation only after at least
+  120 ms and three usable separation samples.
+- A tracking gap over 100 ms disarms the affected finger. Reacquisition always
+  requires confirmed separation before a new activation.
 - Detection must tolerate ordinary landmark jitter without producing repeated
   activations.
-- Losing and reacquiring a hand must not create a synthetic contact event.
+- Losing and reacquiring a hand, starting in contact, or resuming after camera
+  interruption must not create a synthetic contact event.
+- Contact and release spatial thresholds must use hysteresis. Hand Tracking
+  owns their calibrated values, not the event semantics or timing above.
 
 ## Concurrent activations
 
-- Confirmed activations are dispatched in timestamp order: first confirmed,
-  first served.
+- Confirmed activations are dispatched by confirmation timestamp, then capture
+  frame sequence.
 - Speech is not globally serialized. Audio from multiple activations may
   overlap.
 - Dispatch order still controls which activation is submitted first.
-- If two contacts receive the same timestamp or video frame, the prototype
-  must use a documented, deterministic finger-ID tie-break rather than random
-  ordering.
+- Contacts confirmed in the same frame use this tie-break:
+  `left_index`, `left_middle`, `left_ring`, `left_pinky`, `right_index`,
+  `right_middle`, `right_ring`, `right_pinky`.
+- Preview mirroring and callback/landmark order never affect dispatch.
 
 ## Voice routing
 
 - The language of the assigned expression determines whether an English or
   Mandarin voice is used.
-- The prototype should maintain one masculine/feminine preference for English
-  and one masculine/feminine preference for Mandarin. This exposes the four
-  product identities while allowing English and Mandarin assignments to coexist
-  across fingers.
+- The prototype maintains one masculine/feminine preference for English and
+  one independent masculine/feminine preference for Mandarin.
+- These two preferences route to exactly `en_masculine`, `en_feminine`,
+  `zh_masculine`, and `zh_feminine`; there is no per-finger voice selection.
+- An activation snapshots its saved text, language, and current compatible
+  voice. Later edits affect only later activations.
 - Voice playback requests may overlap.
 - Internal implementation may use a speech engine plus robotic audio
   processing, but the user-facing interface must expose only the four TapTalk
   identities.
 
-The per-language preference model is provisional and must be confirmed or
-refined by the Product Architecture task before the voice interface is frozen.
-
 ## Latency target
 
-- Audible speech should begin within 500 milliseconds of confirmed contact.
-- Measurement begins when contact is confirmed by the recognition state
-  machine and ends at audible playback onset.
-- The interface should provide visual acknowledgement earlier whenever
-  possible.
-- Tests must report median and slow-percentile latency rather than only a best
-  case.
+- Under documented normal warmed conditions, p95 audible onset must be no more
+  than 500 ms after confirmed contact.
+- The same distribution must meet p95 visual acknowledgement of 100 ms and p95
+  speech-request dispatch of 50 ms.
+- Measurement begins at the capture time of the frame that confirms contact.
+  Audio measurement ends at the first non-silent sample at the final
+  application output graph, not when a speech API is called.
+- Tests must report sample count, p50, p95, maximum, and failures. Cold start,
+  permission, and recovery paths are reported separately.
 
 ## Privacy and storage
 
@@ -136,6 +161,21 @@ refined by the Product Architecture task before the voice interface is frozen.
 - The user must receive a clear camera-permission explanation and a visible
   indication when the camera is active.
 - Resetting TapTalk must provide a clear way to remove stored configuration.
+
+## Recovery behavior
+
+- Camera inactivity suppresses all new tracking and activation events without
+  deleting configuration.
+- A camera restart creates a new tracking session and leaves every finger
+  disarmed until separation is confirmed.
+- Stale or duplicate activation events have no visual or speech effect.
+- Speech failure does not undo visual acknowledgement and must not automatically
+  replay stale speech.
+- Invalid persisted configuration must never be spoken. The application uses a
+  complete valid factory configuration in memory and waits for explicit user
+  reset or replacement before overwriting bad stored data.
+- A confirmed reset removes saved assignments and preferences and restores the
+  complete factory configuration.
 
 ## First-prototype acceptance path
 
@@ -177,11 +217,11 @@ All subsystems should use stable identifiers:
 
 Mirroring the camera preview must never change these semantic identifiers.
 
-## Decisions still owned by Product Architecture
+## Architecture decision status
 
-- The exact handling of punctuation, digits, emoji, and ambiguous script.
-- The deterministic tie-break order for truly simultaneous contacts.
-- Whether per-language voice preference is the final selection model.
-- Confirmation, separation, and tracking-confidence timing targets.
-- Recovery behavior after hand loss or camera interruption.
-
+The architecture decisions formerly listed as open are resolved for the first
+prototype. Exact validation, state transitions, event schemas, voice routing,
+ordering, latency measurement, and recovery rules are in
+[`ARCHITECTURE_SPEC.md`](ARCHITECTURE_SPEC.md). Accepted product decisions,
+architecture-owned resolutions, and non-normative provisional recommendations
+are distinguished in [`DECISIONS.md`](DECISIONS.md).
