@@ -420,6 +420,94 @@ h2 {
   background: rgb(92 48 34 / 90%);
 }
 
+.thumb-marker {
+  display: none;
+}
+
+.finger-overlay.is-live-tracking .finger-marker,
+.finger-overlay.is-live-tracking .thumb-marker {
+  position: absolute;
+  z-index: 2;
+  top: var(--marker-y);
+  left: var(--marker-x);
+  width: 17px;
+  min-width: 17px;
+  height: 17px;
+  min-height: 17px;
+  padding: 0;
+  border: 2px solid rgb(255 255 255 / 72%);
+  border-radius: 50%;
+  background: #ff1717;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 55%),
+    0 0 0 2px rgb(255 23 23 / 18%);
+  transform: translate(-50%, -50%);
+}
+
+.finger-overlay.is-live-tracking .finger-marker:hover {
+  background: #ff1717;
+  transform: translate(-50%, -50%);
+}
+
+.finger-overlay.is-live-tracking .finger-marker .marker-key {
+  display: none;
+}
+
+.finger-overlay.is-live-tracking .finger-marker .marker-label {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  display: block;
+  overflow: visible;
+  width: max-content;
+  max-width: min(240px, 38vw);
+  padding: 0;
+  color: var(--label-color);
+  font-size: clamp(15px, 2.2vw, 23px);
+  font-style: italic;
+  font-weight: 850;
+  line-height: 1;
+  opacity: 1;
+  text-align: center;
+  text-shadow:
+    0 1px 1px #fff,
+    0 0 3px #fff,
+    1px 1px 2px rgb(0 0 0 / 72%);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.finger-overlay.is-live-tracking .finger-marker.is-active,
+.finger-overlay.is-live-tracking .thumb-marker.is-active {
+  border-color: #fff;
+  background: #ffea00;
+  box-shadow:
+    0 0 0 7px rgb(255 234 0 / 24%),
+    0 2px 6px rgb(0 0 0 / 48%);
+  transform: translate(-50%, -50%) scale(1.12);
+}
+
+.finger-overlay.is-live-tracking .finger-marker[data-tracking-state="approaching"],
+.finger-overlay.is-live-tracking .finger-marker[data-tracking-state="contact_candidate"] {
+  border-color: #fff;
+  background: #ff6a00;
+}
+
+.finger-overlay.is-live-tracking .thumb-marker {
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 120ms ease,
+    top 80ms linear,
+    left 80ms linear,
+    transform 120ms ease;
+}
+
+.finger-overlay.is-live-tracking .thumb-marker.is-tracked {
+  opacity: 1;
+}
+
 .stage-caption {
   position: absolute;
   z-index: 4;
@@ -441,7 +529,14 @@ h2 {
   margin-top: 14px;
 }
 
+.camera-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .primary-button,
+.secondary-button,
 .text-button {
   border: 0;
   border-radius: 11px;
@@ -462,6 +557,23 @@ h2 {
 .primary-button:disabled {
   cursor: wait;
   opacity: 0.55;
+}
+
+.secondary-button {
+  padding: 10px 14px;
+  border: 1px solid #b7bbb3;
+  color: var(--ink);
+  background: #fff;
+}
+
+.secondary-button:hover {
+  border-color: #7b817a;
+  background: #f3f3ed;
+}
+
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 .text-button {
@@ -744,6 +856,12 @@ input[aria-invalid="true"] {
 
   .marker-label {
     display: none;
+  }
+
+  .finger-overlay.is-live-tracking .finger-marker .marker-label {
+    display: block;
+    max-width: 42vw;
+    font-size: 15px;
   }
 
   .feedback-grid,

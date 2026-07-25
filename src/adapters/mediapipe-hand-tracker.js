@@ -7,17 +7,21 @@ const DEFAULT_MODULE_URL = "/vendor/mediapipe/vision_bundle.mjs";
 const DEFAULT_WASM_ROOT = "/vendor/mediapipe/wasm";
 const DEFAULT_MODEL_URL = "/assets/models/hand_landmarker.task";
 
+export const LIVE_CONTACT_OPTIONS = Object.freeze({
+  contactThreshold: 0.55,
+  separationThreshold: 0.78,
+  contactConfirmFrames: 1,
+  separationConfirmFrames: 1,
+  minConfidence: 0.35,
+});
+
 export class MediaPipeHandTracker {
   constructor({
     onEvents,
     onSnapshots,
     onError,
     onStatus,
-    contactTracker = new ContactTracker({
-      contactThreshold: 0.42,
-      separationThreshold: 0.62,
-      minConfidence: 0.35,
-    }),
+    contactTracker = new ContactTracker(LIVE_CONTACT_OPTIONS),
     createLandmarker = createDefaultLandmarker,
     clock = () => performance.now(),
     requestFrame = (callback) => requestAnimationFrame(callback),

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  LIVE_CONTACT_OPTIONS,
   mapMediaPipeResult,
   normalizeMediaPipeHandedness,
   translateContactEvents,
@@ -14,6 +15,15 @@ function landmarks() {
     z: 0,
   }));
 }
+
+test("live contacts accept a short deliberate tap with hysteresis", () => {
+  assert.equal(LIVE_CONTACT_OPTIONS.contactConfirmFrames, 1);
+  assert.equal(LIVE_CONTACT_OPTIONS.separationConfirmFrames, 1);
+  assert.ok(
+    LIVE_CONTACT_OPTIONS.separationThreshold >
+      LIVE_CONTACT_OPTIONS.contactThreshold,
+  );
+});
 
 test("maps MediaPipe landmarks to semantic hand observations", () => {
   const left = landmarks();

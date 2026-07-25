@@ -24,6 +24,17 @@ const CONTACT_STATE_LABELS = Object.freeze({
   held: "held — separate to rearm",
 });
 
+const FINGER_LABEL_COLORS = Object.freeze([
+  "#ff4ad8",
+  "#78ff38",
+  "#3467ff",
+  "#ffb21d",
+  "#44ddff",
+  "#bb72ff",
+  "#52ff9b",
+  "#ff6a45",
+]);
+
 export class AppView {
   constructor(documentRef = document) {
     this.document = documentRef;
@@ -47,9 +58,11 @@ export class AppView {
       settingsStatus: documentRef.querySelector("#settings-status"),
       trackingNote: documentRef.querySelector("#tracking-note"),
       visualLatency: documentRef.querySelector("#visual-latency"),
+      voiceTest: documentRef.querySelector("#voice-test"),
     };
 
     this.renderFingerMarkers();
+    this.renderThumbMarkers();
     this.renderAssignmentFields();
     this.contactMeterKey = "";
   }
@@ -63,6 +76,10 @@ export class AppView {
       marker.dataset.fingerId = fingerId;
       marker.style.setProperty("--marker-x", `${x}%`);
       marker.style.setProperty("--marker-y", `${y}%`);
+      marker.style.setProperty(
+        "--label-color",
+        FINGER_LABEL_COLORS[index],
+      );
       marker.setAttribute(
         "aria-label",
         `${FINGER_LABELS[fingerId]} manual contact, keyboard ${index + 1}`,
@@ -71,6 +88,16 @@ export class AppView {
         <span class="marker-key" aria-hidden="true">${index + 1}</span>
         <span class="marker-label">${FINGER_LABELS[fingerId].replace("Left ", "L · ").replace("Right ", "R · ")}</span>
       `;
+      this.elements.fingerOverlay.append(marker);
+    }
+  }
+
+  renderThumbMarkers() {
+    for (const hand of ["left", "right"]) {
+      const marker = this.document.createElement("span");
+      marker.className = "thumb-marker";
+      marker.dataset.thumbHand = hand;
+      marker.setAttribute("aria-hidden", "true");
       this.elements.fingerOverlay.append(marker);
     }
   }
@@ -143,8 +170,9 @@ export class AppView {
     };
   }
 
-  bind({ onCameraToggle, onSave, onReset }) {
+  bind({ onCameraToggle, onVoiceTest, onSave, onReset }) {
     this.elements.cameraToggle.addEventListener("click", onCameraToggle);
+    this.elements.voiceTest.addEventListener("click", onVoiceTest);
     this.elements.form.addEventListener("submit", onSave);
     this.elements.reset.addEventListener("click", onReset);
   }
@@ -203,7 +231,40 @@ export class AppView {
         );
       }
     }
+    this.applyThumbSnapshots(snapshots);
     this.showContactMeter(snapshots);
+  }
+
+  applyThumbSnapshots(snapshots) {
+    for (const hand of ["left", "right"]) {
+      const snapshot = snapshots.find(
+        (candidate) =>
+          candidate.handedness === hand &&
+          candidate.visible &&
+          candidate.thumbTip,
+      );
+      const marker = this.thumbMarker(hand);
+      marker.classList.toggle("is-tracked", Boolean(snapshot));
+      marker.classList.toggle(
+        "is-active",
+        snapshots.some(
+          (candidate) =>
+            candidate.handedness === hand &&
+            (candidate.state === "activated" ||
+              candidate.state === "held"),
+        ),
+      );
+      if (snapshot) {
+        marker.style.setProperty(
+          "--marker-x",
+          `${(1 - snapshot.thumbTip.x) * 100}%`,
+        );
+        marker.style.setProperty(
+          "--marker-y",
+          `${snapshot.thumbTip.y * 100}%`,
+        );
+      }
+    }
   }
 
   showContactMeter(snapshots) {
@@ -260,7 +321,25 @@ export class AppView {
         marker.style.setProperty("--marker-x", `${x}%`);
         marker.style.setProperty("--marker-y", `${y}%`);
       }
+      for (const hand of ["left", "right"]) {
+        this.thumbMarker(hand).classList.remove(
+          "is-tracked",
+          "is-active",
+        );
+      }
     }
+  }
+
+  setVoiceTestState(state, message) {
+    const busy = state === "testing" || state === "playing";
+    this.elements.voiceTest.disabled = busy;
+    this.elements.voiceTest.textContent =
+      state === "testing"
+        ? "Starting voice…"
+        : state === "playing"
+          ? "Voice playing…"
+          : "Test voice";
+    this.elements.cameraMessage.textContent = message;
   }
 
   showTrackingStatus({ phase, detectedHands, trackedHands }) {
@@ -342,6 +421,12 @@ export class AppView {
   marker(fingerId) {
     return this.elements.fingerOverlay.querySelector(
       `[data-finger-id="${fingerId}"]`,
+    );
+  }
+
+  thumbMarker(hand) {
+    return this.elements.fingerOverlay.querySelector(
+      `[data-thumb-hand="${hand}"]`,
     );
   }
 

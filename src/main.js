@@ -8,6 +8,7 @@ import {
   normalizeConfig,
   validateConfig,
 } from "./core/config.js";
+import { voiceIdFor } from "./domain/contracts.js";
 import { LatencyMonitor } from "./core/latency-monitor.js";
 import { AppView } from "./ui/app-view.js";
 
@@ -80,6 +81,80 @@ const visionTracker = new MediaPipeHandTracker({
 });
 
 view.bind({
+  onVoiceTest: () => {
+    const assignment = config.assignments.left_index;
+    const voiceId = voiceIdFor(
+      assignment.language,
+      config.voicePreferences[assignment.language],
+    );
+    let started = false;
+    let finished = false;
+    view.setVoiceTestState(
+      "testing",
+      `Testing the browser voice with “${assignment.text}”…`,
+    );
+
+    const timeoutId = window.setTimeout(() => {
+      if (finished || started) {
+        return;
+      }
+      view.setVoiceTestState(
+        "idle",
+        "The browser did not start speech within three seconds. Check site audio permission, mute settings, and the selected output device.",
+      );
+    }, 3000);
+
+    try {
+      Promise.resolve(
+        voicePort.speak({
+          activationId: `voice-test-${Date.now()}`,
+          text: assignment.text,
+          language: assignment.language,
+          voiceId,
+          onAudibleStart: () => {
+            started = true;
+            view.setVoiceTestState(
+              "playing",
+              `Browser speech started for “${assignment.text}”.`,
+            );
+          },
+          onError: (error) => {
+            finished = true;
+            window.clearTimeout(timeoutId);
+            view.setVoiceTestState(
+              "idle",
+              `Voice test failed: ${error.message}`,
+            );
+          },
+        }),
+      )
+        .then(() => {
+          finished = true;
+          window.clearTimeout(timeoutId);
+          view.setVoiceTestState(
+            "idle",
+            started
+              ? "Voice test finished. Audio is working; try a fingertip contact next."
+              : "Speech ended without an audible-start signal from this browser.",
+          );
+        })
+        .catch((error) => {
+          finished = true;
+          window.clearTimeout(timeoutId);
+          view.setVoiceTestState(
+            "idle",
+            `Voice test failed: ${error.message}`,
+          );
+        });
+    } catch (error) {
+      finished = true;
+      window.clearTimeout(timeoutId);
+      view.setVoiceTestState(
+        "idle",
+        `Voice test failed: ${error.message}`,
+      );
+    }
+  },
   onCameraToggle: async () => {
     if (cameraActive) {
       visionTracker.stop();
