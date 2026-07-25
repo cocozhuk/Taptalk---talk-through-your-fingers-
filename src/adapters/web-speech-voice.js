@@ -51,9 +51,8 @@ export class WebSpeechVoicePort {
         { once: true },
       );
 
-      // Requests are submitted immediately and independently. Some browser
-      // speech engines still serialize them; the production voice adapter must
-      // replace this fallback to guarantee overlapping playback.
+      // The dispatcher admits only one request at a time and drops rapid taps,
+      // so the browser's internal speech queue never accumulates stale words.
       this.speechSynthesis.resume?.();
       this.speechSynthesis.speak(utterance);
     });

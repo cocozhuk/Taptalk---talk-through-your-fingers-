@@ -107,7 +107,7 @@ For each accepted activation, the dispatcher synchronously publishes:
 ```
 
 Visual acknowledgement happens during this synchronous publication. A
-`SpeechRequest` is then submitted without waiting for any earlier request:
+`SpeechRequest` is submitted only when no earlier request is active:
 
 ```js
 {
@@ -121,8 +121,9 @@ Visual acknowledgement happens during this synchronous publication. A
 }
 ```
 
-The voice port method is `speak(request)`. It must not introduce a global queue
-or cancel currently playing speech.
+The voice port method is `speak(request)`. App State admits the earliest
+request and discards later activations until it settles, so the voice port must
+not accumulate an additional hidden queue.
 
 ### Configuration
 
@@ -198,7 +199,7 @@ criteria pass.
 4. Completed for the first prototype: drive fingertip expression labels from
    normalized tracking positions and states.
 5. Replace browser speech fallback with the four-identity local robotic voice
-   adapter and verify truly overlapping playback.
+   adapter and verify first-wins playback without a stale backlog.
 6. Execute the QA acceptance matrix, measure latency distributions on supported
    devices, and update release readiness.
 
@@ -210,8 +211,8 @@ criteria pass.
 - **Manual fallback:** static positions remain visible before the camera starts
   so the complete routing path can be tested without camera permission.
 - **Robotic voice production:** the browser speech adapter exposes only the four
-  TapTalk identities and submits requests independently, but browser engines may
-  serialize them and do not guarantee the intended robotic character.
+  TapTalk identities. The first-wins gate prevents browser queue buildup, but
+  the browser voices do not guarantee the intended robotic character.
 - **Latency qualification:** instrumentation is wired, but acceptance requires
   real tracking and voice adapters plus device-level audible-onset measurement.
 - **Recovery/calibration polish:** basic camera errors and stop/start behavior

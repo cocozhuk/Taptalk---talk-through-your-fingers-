@@ -35,6 +35,8 @@ export class ActivationDispatcher {
     onActivation,
     onAudibleStart,
     onSpeechError,
+    onSpeechBusy,
+    onSpeechIdle,
     deduplicationLimit = 2048,
   }) {
     this.getConfig = getConfig;
@@ -42,10 +44,13 @@ export class ActivationDispatcher {
     this.onActivation = onActivation ?? (() => {});
     this.onAudibleStart = onAudibleStart ?? (() => {});
     this.onSpeechError = onSpeechError ?? (() => {});
+    this.onSpeechBusy = onSpeechBusy ?? (() => {});
+    this.onSpeechIdle = onSpeechIdle ?? (() => {});
     this.deduplicationLimit = deduplicationLimit;
     this.seenActivationIds = new Set();
     this.seenActivationOrder = [];
     this.latestFrameBySession = new Map();
+    this.activeActivation = null;
   }
 
   dispatch(events) {
@@ -71,6 +76,11 @@ export class ActivationDispatcher {
       );
       this.remember(activationId);
 
+      if (this.activeActivation) {
+        this.onSpeechBusy(event, this.activeActivation);
+        continue;
+      }
+
       const config = this.getConfig();
       const assignment = config.assignments[event.fingerId];
       const voiceId = voiceIdFor(
@@ -88,6 +98,16 @@ export class ActivationDispatcher {
 
       this.onActivation(activation);
       accepted.push(activation);
+      this.activeActivation = activation;
+
+      let speechErrorReported = false;
+      const reportSpeechError = (error) => {
+        if (speechErrorReported) {
+          return;
+        }
+        speechErrorReported = true;
+        this.onSpeechError(activation, error);
+      };
 
       const request = {
         activationId,
@@ -97,19 +117,34 @@ export class ActivationDispatcher {
         confirmedAtMs: activation.confirmedAtMs,
         onAudibleStart: (startedAtMs) =>
           this.onAudibleStart(activation, startedAtMs),
-        onError: (error) => this.onSpeechError(activation, error),
+        onError: reportSpeechError,
       };
 
       try {
-        Promise.resolve(this.voicePort.speak(request)).catch((error) => {
-          request.onError(error);
-        });
+        Promise.resolve(this.voicePort.speak(request)).then(
+          () => this.finishSpeech(activation, null),
+          (error) => {
+            reportSpeechError(error);
+            this.finishSpeech(activation, error);
+          },
+        );
       } catch (error) {
-        request.onError(error);
+        reportSpeechError(error);
+        this.finishSpeech(activation, error);
       }
     }
 
     return accepted;
+  }
+
+  finishSpeech(activation, error) {
+    if (
+      this.activeActivation?.activationId !== activation.activationId
+    ) {
+      return;
+    }
+    this.activeActivation = null;
+    this.onSpeechIdle(activation, error);
   }
 
   remember(activationId) {
@@ -121,4 +156,3 @@ export class ActivationDispatcher {
     }
   }
 }
-

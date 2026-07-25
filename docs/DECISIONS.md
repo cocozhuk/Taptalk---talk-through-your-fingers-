@@ -21,7 +21,7 @@ specialist.
 | U-004 | Mandarin unit | One Han-script character counts as one word/unit. |
 | U-005 | Voices | Exactly four fixed TapTalk identities: English masculine/feminine and Mandarin masculine/feminine; no system catalogue or protected-character imitation. |
 | U-006 | Contact/rearm | One sustained contact activates once; confirmed separation is required before the same finger can activate again. |
-| U-007 | Concurrency | First confirmed is submitted first; speech requests are not globally serialized and may overlap. |
+| U-007 | Concurrency | First confirmed wins. While it is speaking, later activations are discarded with visual feedback and are never queued. |
 | U-008 | Latency | Audible onset targets no more than 500 ms after confirmed contact, with median and slow-percentile reporting. |
 | U-009 | Privacy/storage | Configuration stays on device; webcam processing is local and frames are not stored, uploaded, or retained by default. |
 | U-010 | Semantic handedness | Stable user-hand finger IDs do not change when the camera preview is mirrored. |

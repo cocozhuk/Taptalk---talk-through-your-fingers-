@@ -380,6 +380,7 @@ export class AppView {
   }
 
   showSpeechPending(activation) {
+    this.elements.voiceTest.disabled = true;
     this.elements.cameraMessage.textContent =
       `Contact detected: “${activation.expression}”. Starting voice…`;
   }
@@ -390,8 +391,20 @@ export class AppView {
   }
 
   showSpeechError(activation, error) {
+    this.elements.voiceTest.disabled = false;
     this.elements.cameraMessage.textContent =
       `Contact detected for “${activation.expression}”, but audio failed: ${error.message}`;
+  }
+
+  showSpeechBusy(activeActivation, ignoredAssignment) {
+    this.elements.cameraMessage.textContent =
+      `Speaking “${activeActivation.expression}”. Ignored rapid tap for “${ignoredAssignment.text}” — nothing was queued.`;
+  }
+
+  showSpeechReady(activation) {
+    this.elements.voiceTest.disabled = false;
+    this.elements.cameraMessage.textContent =
+      `Finished “${activation.expression}”. Ready for the next tap.`;
   }
 
   showLatency(visual, audio) {

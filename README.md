@@ -11,6 +11,8 @@ The current runnable integration scaffold includes:
 - strict first-prototype English and Mandarin validation;
 - exactly four fixed TapTalk voice identities;
 - deterministic timestamp/finger-ID activation dispatch;
+- first-wins speech with no backlog: rapid taps are visibly discarded while
+  the earliest expression is speaking;
 - visual and audible-onset latency instrumentation;
 - on-device MediaPipe landmarks for up to two hands;
 - scale-normalized thumb-to-fingertip contact detection with separation rearm;
@@ -34,8 +36,9 @@ npm run dev
 
 Open `http://127.0.0.1:4173`, start the camera, and hold both hands in view.
 Touch a non-thumb fingertip to the thumb on the same hand; separate them before
-using that finger again. The marker and keyboard controls remain available as a
-camera-free fallback.
+using that finger again. Only the earliest tap speaks while audio is active;
+later rapid taps are discarded rather than queued. The marker and keyboard
+controls remain available as a camera-free fallback.
 
 ## Verify
 

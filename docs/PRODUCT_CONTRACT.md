@@ -118,9 +118,10 @@ untracked
 
 - Confirmed activations are dispatched by confirmation timestamp, then capture
   frame sequence.
-- Speech is not globally serialized. Audio from multiple activations may
-  overlap.
-- Dispatch order still controls which activation is submitted first.
+- The earliest confirmed activation starts speech.
+- While that expression is speaking, later activations are discarded with
+  visual feedback. They are never queued for delayed playback.
+- A new activation may be accepted after the active expression ends or fails.
 - Contacts confirmed in the same frame use this tie-break:
   `left_index`, `left_middle`, `left_ring`, `left_pinky`, `right_index`,
   `right_middle`, `right_ring`, `right_pinky`.
@@ -136,7 +137,8 @@ untracked
   `zh_masculine`, and `zh_feminine`; there is no per-finger voice selection.
 - An activation snapshots its saved text, language, and current compatible
   voice. Later edits affect only later activations.
-- Voice playback requests may overlap.
+- At most one voice request is active. Busy-time activations are discarded,
+  not queued or replayed later.
 - Internal implementation may use a speech engine plus robotic audio
   processing, but the user-facing interface must expose only the four TapTalk
   identities.

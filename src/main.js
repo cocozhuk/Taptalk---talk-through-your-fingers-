@@ -47,6 +47,17 @@ const dispatcher = new ActivationDispatcher({
     view.showSpeechError(activation, error);
     view.setSettingsStatus(error.message, "error");
   },
+  onSpeechBusy: (event, activeActivation) => {
+    view.showSpeechBusy(
+      activeActivation,
+      config.assignments[event.fingerId],
+    );
+  },
+  onSpeechIdle: (activation, error) => {
+    if (!error) {
+      view.showSpeechReady(activation);
+    }
+  },
 });
 
 const processTrackingEvents = (events) => {

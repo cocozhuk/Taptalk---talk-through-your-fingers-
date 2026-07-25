@@ -396,10 +396,10 @@ All activations from one frame must be sorted as a batch before dispatch.
 Mirroring, landmark array order, asynchronous callback order, and object-key
 order must never affect dispatch.
 
-Dispatch order controls reducer/effect submission order only. It must not
-globally serialize playback. A later request may become audible before an
-earlier request because speech preparation varies; both remain correctly
-ordered at submission.
+Dispatch order selects the single earliest activation admitted to speech.
+While that request is active, later confirmations are consumed and reported as
+busy-time drops. They are not submitted to the voice subsystem and never play
+later from a backlog.
 
 ## 5. Activation snapshot and voice selection
 
@@ -453,10 +453,10 @@ request. Edits or preference changes after the snapshot affect only future
 activations. A speech backend must reject a language/voice mismatch rather than
 silently substitute another TapTalk identity.
 
-Each accepted activation submits one independent speech request. Requests may
-overlap, including requests for the same finger after a valid rearm. An audio
-failure must not undo the visual activation or automatically replay stale
-speech; the next deliberate activation may try again.
+The earliest accepted activation submits one speech request. Until it ends or
+fails, later activations are discarded with visual feedback. An audio failure
+must not undo the visual activation or automatically replay stale speech; once
+the busy gate is released, the next deliberate activation may try again.
 
 The voice subsystem returns correlated telemetry:
 
@@ -579,7 +579,7 @@ validator and be documented by Integration before release.
 
 - Accept `ActivationDispatch` speech fields and preserve the supplied
   language/voice pairing.
-- Deduplicate by `activationId`, support overlapping requests, and return
+- Deduplicate by `activationId`, keep at most one request active, and return
   onset/failure telemetry correlated to that ID.
 - Expose no additional identity or operating-system catalogue to the user.
 
@@ -608,7 +608,7 @@ validator and be documented by Integration before release.
   boundaries.
 - Provide a complete factory configuration, version it, and document its
   validated values.
-- Ensure one-frame activation batches are reduced deterministically while
-  speech effects remain independent and overlap-capable.
+- Ensure one-frame activation batches are reduced deterministically and only
+  the earliest activation is admitted while speech is busy.
 - Record any unavoidable platform proxy or deviation as a contract-change
   request before calling the prototype accepted.

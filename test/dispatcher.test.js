@@ -32,19 +32,28 @@ test("same-timestamp contacts use the documented finger-ID tie-break", () => {
   );
 });
 
-test("dispatcher orders activations and submits speech without awaiting playback", () => {
+test("dispatcher speaks the earliest activation and drops rapid taps", async () => {
   const calls = [];
   const activations = [];
-  const neverFinishes = new Promise(() => {});
+  const dropped = [];
+  const resolvers = [];
   const dispatcher = new ActivationDispatcher({
     getConfig: createDefaultConfig,
     voicePort: {
       speak(request) {
         calls.push(request);
-        return neverFinishes;
+        return new Promise((resolve) => {
+          resolvers.push(resolve);
+        });
       },
     },
     onActivation: (activation) => activations.push(activation),
+    onSpeechBusy: (event, activeActivation) => {
+      dropped.push({
+        fingerId: event.fingerId,
+        activeFingerId: activeActivation.fingerId,
+      });
+    },
   });
 
   const accepted = dispatcher.dispatch([
@@ -55,12 +64,30 @@ test("dispatcher orders activations and submits speech without awaiting playback
 
   assert.deepEqual(
     accepted.map(({ fingerId }) => fingerId),
-    ["left_index", "left_middle", "right_index"],
+    ["left_index"],
   );
-  assert.equal(calls.length, 3);
-  assert.equal(activations.length, 3);
+  assert.equal(calls.length, 1);
+  assert.equal(activations.length, 1);
   assert.equal(calls[0].voiceId, "en_masculine");
-  assert.equal(calls[2].voiceId, "zh_feminine");
+  assert.deepEqual(dropped, [
+    { fingerId: "left_middle", activeFingerId: "left_index" },
+    { fingerId: "right_index", activeFingerId: "left_index" },
+  ]);
+
+  resolvers[0]();
+  await Promise.resolve();
+
+  const next = dispatcher.dispatch([
+    event({
+      fingerId: "right_index",
+      timestampMs: 102,
+      frameId: 3,
+    }),
+  ]);
+  assert.equal(next.length, 1);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].voiceId, "zh_feminine");
+  resolvers[1]();
 });
 
 test("dispatcher rejects duplicate and stale activation events", () => {
@@ -80,6 +107,34 @@ test("dispatcher rejects duplicate and stale activation events", () => {
   assert.equal(calls.length, 1);
 });
 
+test("speech failure releases the first-wins gate", async () => {
+  const failures = [];
+  let rejectSpeech;
+  const dispatcher = new ActivationDispatcher({
+    getConfig: createDefaultConfig,
+    voicePort: {
+      speak() {
+        return new Promise((_resolve, reject) => {
+          rejectSpeech = reject;
+        });
+      },
+    },
+    onSpeechError: (_activation, error) => failures.push(error.message),
+  });
+
+  assert.equal(dispatcher.dispatch([event()]).length, 1);
+  rejectSpeech(new Error("engine failed"));
+  await Promise.resolve();
+
+  assert.equal(
+    dispatcher.dispatch([
+      event({ fingerId: "left_middle", frameId: 2, timestampMs: 101 }),
+    ]).length,
+    1,
+  );
+  assert.deepEqual(failures, ["engine failed"]);
+});
+
 test("dispatcher ignores malformed and non-activation tracking events", () => {
   const dispatcher = new ActivationDispatcher({
     getConfig: createDefaultConfig,
@@ -95,4 +150,3 @@ test("dispatcher ignores malformed and non-activation tracking events", () => {
     [],
   );
 });
-

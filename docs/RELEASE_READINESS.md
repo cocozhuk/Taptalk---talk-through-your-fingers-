@@ -16,8 +16,8 @@ Status: runnable integration scaffold; not an accepted full prototype
   per-language preferences.
 - Activation batches use timestamp order and the documented stable finger-ID
   tie-break.
-- Speech requests are submitted without application-level global
-  serialization.
+- Speech uses a first-wins busy gate: one request is active and later rapid
+  taps are discarded rather than added to the browser queue.
 - Up to two hands are detected locally with MediaPipe landmarks.
 - The specialist contact state machine is wired to the webcam path and requires
   separation before rearming a finger.
@@ -36,7 +36,7 @@ Status: runnable integration scaffold; not an accepted full prototype
 | Jitter, occlusion, hand loss and rearming | State machine tested | Real-world reliability results |
 | Live fingertip-adjacent label positions | Integrated | Visual tests across devices and occlusion |
 | Four charming robotic identities | Browser speech profiles only | Robotic Voices implementation/evaluation |
-| Guaranteed overlapping spoken playback | Not guaranteed by browser speech | Robotic Voices independent audio pipeline |
+| First-wins speech with no stale backlog | Integrated and unit-tested | Physical rapid-tap verification |
 | Audible onset within 500 ms | Instrumented, not qualified | Real adapters and physical-device measurement |
 | Complete recovery/calibration UX | Basic camera errors only | Interface Design and QA review |
 | Accessibility acceptance | Basic semantic/keyboard/reduced-motion support | QA accessibility audit |
@@ -46,8 +46,8 @@ Status: runnable integration scaffold; not an accepted full prototype
 
 - Hand landmarks and contact detection are a first-prototype implementation,
   not sign-language or arbitrary-gesture recognition.
-- Browser Speech Synthesis may serialize requests and its installed voices vary
-  by device. It is retained only as a no-dependency integration fallback.
+- Browser Speech Synthesis may queue requests internally, so the integration
+  submits only the earliest request and discards taps while it is active.
 - Audible start telemetry uses the browser utterance `start` event, which is not
   a substitute for acoustic measurement.
 - Static label positions are used only while the camera is off; live positions
