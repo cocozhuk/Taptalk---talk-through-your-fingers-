@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="TapTalk maps deliberate thumb-to-fingertip contacts to eight visible and spoken expressions."
+    />
+    <title>TapTalk prototype</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="masthead">
+        <a class="brand" href="#main-content" aria-label="TapTalk home">
+          <span class="brand-mark" aria-hidden="true">T</span>
+          <span>
+            <strong>TapTalk</strong>
+            <small>Local integration prototype</small>
+          </span>
+        </a>
+        <div class="prototype-badge">
+          <span class="status-dot" aria-hidden="true"></span>
+          Manual contact harness
+        </div>
+      </header>
+
+      <section class="privacy-note" aria-label="Camera privacy">
+        <strong>Private by design.</strong>
+        Camera frames stay in this browser tab and are never recorded or
+        uploaded. Assignments are stored only on this device.
+      </section>
+
+      <main id="main-content" class="workspace">
+        <section class="live-panel" aria-labelledby="live-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Live input</p>
+              <h1 id="live-title">Touch a fingertip</h1>
+            </div>
+            <div id="camera-indicator" class="camera-indicator is-off">
+              <span aria-hidden="true"></span>
+              <span>Camera off</span>
+            </div>
+          </div>
+
+          <div class="camera-stage">
+            <video
+              id="camera-preview"
+              muted
+              playsinline
+              aria-label="Mirrored local camera preview"
+            ></video>
+            <div class="camera-placeholder" id="camera-placeholder">
+              <div class="placeholder-orbit" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <strong>Camera preview</strong>
+              <span>Start when you are ready</span>
+            </div>
+            <div
+              id="finger-overlay"
+              class="finger-overlay"
+              aria-label="Manual fingertip contact controls"
+            ></div>
+            <div class="stage-caption">
+              <span>Mirrored preview</span>
+              <span>Frames are not stored</span>
+            </div>
+          </div>
+
+          <div class="camera-controls">
+            <button id="camera-toggle" class="primary-button" type="button">
+              Start camera
+            </button>
+            <p id="camera-message" class="camera-message" role="status">
+              Camera permission is requested only after you start it.
+            </p>
+          </div>
+
+          <div class="test-harness-note">
+            <span class="note-icon" aria-hidden="true">i</span>
+            <p>
+              <strong>Tracking placeholder:</strong> press and hold a fingertip
+              marker, or keys 1–8, to simulate contact. Release to rearm.
+            </p>
+          </div>
+
+          <div class="feedback-grid">
+            <article class="activation-card">
+              <p class="eyebrow">Last activation</p>
+              <p id="activation-expression" class="activation-expression">
+                Waiting for contact
+              </p>
+              <p id="activation-detail" class="activation-detail">
+                Use any of the eight markers
+              </p>
+            </article>
+            <article class="latency-card">
+              <p class="eyebrow">Measured latency</p>
+              <dl>
+                <div>
+                  <dt>Visual p50</dt>
+                  <dd id="visual-latency">—</dd>
+                </div>
+                <div>
+                  <dt>Audio p50</dt>
+                  <dd id="audio-latency">—</dd>
+                </div>
+              </dl>
+              <p id="latency-samples">No measured samples yet</p>
+            </article>
+          </div>
+        </section>
+
+        <aside class="settings-panel" aria-labelledby="settings-title">
+          <div class="section-heading settings-heading">
+            <div>
+              <p class="eyebrow">Assignments</p>
+              <h2 id="settings-title">Your eight expressions</h2>
+            </div>
+            <span class="local-chip">On-device</span>
+          </div>
+
+          <form id="settings-form" novalidate>
+            <div id="assignment-list" class="assignment-list"></div>
+
+            <fieldset class="voice-fieldset">
+              <legend>Fixed voice identities</legend>
+              <p>
+                Choose one of two TapTalk identities for each language. No
+                system voice catalogue is exposed.
+              </p>
+              <div class="voice-grid">
+                <label>
+                  <span>English voice</span>
+                  <select id="english-voice" name="englishVoice">
+                    <option value="masculine">
+                      English masculine · Bolt
+                    </option>
+                    <option value="feminine">
+                      English feminine · Lumen
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  <span>Mandarin voice</span>
+                  <select id="mandarin-voice" name="mandarinVoice">
+                    <option value="masculine">
+                      Mandarin masculine · Relay
+                    </option>
+                    <option value="feminine">
+                      Mandarin feminine · Pixel
+                    </option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">
+                Save assignments
+              </button>
+              <button id="reset-settings" class="text-button" type="button">
+                Reset local data
+              </button>
+            </div>
+            <p id="settings-status" class="settings-status" role="status"></p>
+          </form>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
+
