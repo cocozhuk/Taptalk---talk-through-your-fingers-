@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "contract": "docs/PRODUCT_CONTRACT.md",
+    "decision_log": "docs/DECISIONS.md"
+  },
+  "notes": [
+    "contract cases express fixed product behavior",
+    "provisional_interpretation cases must be updated after Product Architecture decides ambiguous input handling",
+    "values are exact user inputs; implementations apply the contract's trimming and unit-count rules"
+  ],
+  "cases": [
+    {
+      "id": "EN-EMPTY",
+      "language": "en",
+      "value": "",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "English requires one to five words"
+    },
+    {
+      "id": "EN-WHITESPACE",
+      "language": "en",
+      "value": "   ",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "Trimming leaves zero words"
+    },
+    {
+      "id": "EN-ONE",
+      "language": "en",
+      "value": "Help",
+      "expected": "accept",
+      "authority": "contract",
+      "reason": "One whitespace-delimited English word"
+    },
+    {
+      "id": "EN-FIVE",
+      "language": "en",
+      "value": "Could you help me please",
+      "expected": "accept",
+      "authority": "contract",
+      "reason": "Five whitespace-delimited English words"
+    },
+    {
+      "id": "EN-TRIM-SPACES",
+      "language": "en",
+      "value": "  Please   wait  ",
+      "expected": "accept",
+      "authority": "contract",
+      "reason": "Trimming and whitespace tokenization produce two words"
+    },
+    {
+      "id": "EN-SIX",
+      "language": "en",
+      "value": "Could you please help me now",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "Six English words exceed the five-word maximum"
+    },
+    {
+      "id": "EN-HAN",
+      "language": "en",
+      "value": "你好",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "English expressions must not contain Han-script characters"
+    },
+    {
+      "id": "EN-MIXED",
+      "language": "en",
+      "value": "Help 帮我",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "Mixed English and Mandarin lexical content is invalid"
+    },
+    {
+      "id": "ZH-EMPTY",
+      "language": "zh",
+      "value": "",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "Mandarin requires one to five Han characters"
+    },
+    {
+      "id": "ZH-ONE",
+      "language": "zh",
+      "value": "好",
+      "expected": "accept",
+      "authority": "contract",
+      "reason": "One Han character is one Mandarin unit"
+    },
+    {
+      "id": "ZH-FIVE",
+      "language": "zh",
+      "value": "请帮我开门",
+      "expected": "accept",
+      "authority": "contract",
+      "reason": "Five Han characters are five Mandarin units"
+    },
+    {
+      "id": "ZH-SIX",
+      "language": "zh",
+      "value": "请帮我打开门",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "Six Han characters exceed the five-unit maximum"
+    },
+    {
+      "id": "ZH-LATIN",
+      "language": "zh",
+      "value": "hello",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "Mandarin expressions must not contain Latin-script words"
+    },
+    {
+      "id": "ZH-MIXED",
+      "language": "zh",
+      "value": "你好 hello",
+      "expected": "reject",
+      "authority": "contract",
+      "reason": "Mixed English and Mandarin lexical content is invalid"
+    },
+    {
+      "id": "AMB-EN-PUNCTUATION",
+      "language": "en",
+      "value": "Help!",
+      "expected": "reject",
+      "authority": "provisional_interpretation",
+      "reason": "Punctuation policy is unresolved; safest prototype behavior is rejection"
+    },
+    {
+      "id": "AMB-ZH-PUNCTUATION",
+      "language": "zh",
+      "value": "你好！",
+      "expected": "reject",
+      "authority": "provisional_interpretation",
+      "reason": "Punctuation policy is unresolved; safest prototype behavior is rejection"
+    },
+    {
+      "id": "AMB-DIGITS",
+      "language": "en",
+      "value": "Help 123",
+      "expected": "reject",
+      "authority": "provisional_interpretation",
+      "reason": "Digit policy is unresolved; safest prototype behavior is rejection"
+    },
+    {
+      "id": "AMB-EMOJI",
+      "language": "en",
+      "value": "Help 🙂",
+      "expected": "reject",
+      "authority": "provisional_interpretation",
+      "reason": "Emoji policy is unresolved; safest prototype behavior is rejection"
+    }
+  ]
+}
