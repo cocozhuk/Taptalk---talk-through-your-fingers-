@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TapTalk voice-path diagnostic</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: #101416;
+        color: #eef7f3;
+      }
+      body {
+        max-width: 52rem;
+        margin: 0 auto;
+        padding: 3rem 1.25rem;
+      }
+      .warning {
+        padding: 1rem;
+        border: 1px solid #f3b45e;
+        background: #2d2417;
+      }
+      button {
+        min-height: 3rem;
+        border: 1px solid #7ccfb0;
+        border-radius: 0.4rem;
+        padding: 0.7rem 1rem;
+        background: #173229;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+      .voices {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+        gap: 0.75rem;
+        margin: 1.5rem 0;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 0.4rem 1rem;
+      }
+      dd {
+        margin: 0;
+      }
+      pre {
+        min-height: 8rem;
+        overflow: auto;
+        padding: 1rem;
+        background: #090c0d;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>TapTalk voice-path diagnostic</h1>
+      <p class="warning" role="note">
+        Engineering tones only. This page proves routing, Web Audio processing,
+        overlap, caching, and timing. It is not speech and is not a demo of the
+        four product voices.
+      </p>
+      <p id="status" aria-live="polite">Preparing the diagnostic cache…</p>
+      <button id="unlock" type="button" disabled>Unlock audio</button>
+
+      <section aria-labelledby="voices-heading">
+        <h2 id="voices-heading">Fixed routes</h2>
+        <div class="voices">
+          <button class="voice" data-language="en" data-gender="masculine" disabled>
+            English masculine tone
+          </button>
+          <button class="voice" data-language="en" data-gender="feminine" disabled>
+            English feminine tone
+          </button>
+          <button class="voice" data-language="zh" data-gender="masculine" disabled>
+            Mandarin masculine tone
+          </button>
+          <button class="voice" data-language="zh" data-gender="feminine" disabled>
+            Mandarin feminine tone
+          </button>
+        </div>
+      </section>
+
+      <dl>
+        <dt>Active playbacks</dt>
+        <dd id="active">0</dd>
+        <dt>Estimated median</dt>
+        <dd id="median">—</dd>
+        <dt>Estimated p95</dt>
+        <dd id="p95">—</dd>
+        <dt>PCM cache</dt>
+        <dd id="cache">0 entries</dd>
+      </dl>
+
+      <h2>Events</h2>
+      <pre id="events" aria-live="polite"></pre>
+    </main>
+    <script type="module" src="./demo.mjs"></script>
+  </body>
+</html>

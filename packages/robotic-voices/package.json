@@ -1,0 +1,20 @@
+{
+  "name": "@taptalk/robotic-voices",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "README.md",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs"
+    },
+    "./diagnostic": "./src/diagnostic-tone-backend.mjs"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
