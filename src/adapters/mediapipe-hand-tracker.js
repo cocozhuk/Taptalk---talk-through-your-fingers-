@@ -12,13 +12,17 @@ export const LIVE_CONTACT_OPTIONS = Object.freeze({
   separationThreshold: 0.78,
   contactConfirmFrames: 1,
   separationConfirmFrames: 1,
-  minConfidence: 0.35,
+  // MediaPipe has already applied its detection/presence thresholds before
+  // returning landmarks. Handedness certainty must not hide valid fingertips
+  // or disable contact input.
+  minConfidence: 0,
 });
 
 export class MediaPipeHandTracker {
   constructor({
     onEvents,
     onSnapshots,
+    onLandmarks,
     onError,
     onStatus,
     contactTracker = new ContactTracker(LIVE_CONTACT_OPTIONS),
@@ -30,6 +34,7 @@ export class MediaPipeHandTracker {
   }) {
     this.onEvents = onEvents ?? (() => {});
     this.onSnapshots = onSnapshots ?? (() => {});
+    this.onLandmarks = onLandmarks ?? (() => {});
     this.onError = onError ?? (() => {});
     this.onStatus = onStatus ?? (() => {});
     this.contactTracker = contactTracker;
@@ -78,6 +83,7 @@ export class MediaPipeHandTracker {
     this.videoElement = null;
     this.contactTracker.reset();
     this.onSnapshots([]);
+    this.onLandmarks([]);
   }
 
   destroy() {
@@ -105,6 +111,7 @@ export class MediaPipeHandTracker {
           timestampMs,
         );
         const hands = mapMediaPipeResult(result);
+        this.onLandmarks(hands);
         this.frameId += 1;
         const tracked = this.contactTracker.processFrame({
           timestampMs,

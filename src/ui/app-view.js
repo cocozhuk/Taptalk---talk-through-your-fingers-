@@ -35,6 +35,13 @@ const FINGER_LABEL_COLORS = Object.freeze([
   "#ff6a45",
 ]);
 
+const FINGERTIP_LANDMARK_INDEX = Object.freeze({
+  index: 8,
+  middle: 12,
+  ring: 16,
+  pinky: 20,
+});
+
 export class AppView {
   constructor(documentRef = document) {
     this.document = documentRef;
@@ -213,58 +220,57 @@ export class AppView {
     for (const fingerId of FINGER_IDS) {
       const marker = this.marker(fingerId);
       const snapshot = byFinger.get(fingerId);
-      const visible = Boolean(snapshot?.visible && snapshot.fingertip);
-      marker.classList.toggle("is-tracked", visible);
       marker.classList.toggle(
         "is-active",
         snapshot?.state === "activated" || snapshot?.state === "held",
       );
       marker.dataset.trackingState = snapshot?.state ?? "not_visible";
-      if (visible) {
-        marker.style.setProperty(
-          "--marker-x",
-          `${(1 - snapshot.fingertip.x) * 100}%`,
-        );
-        marker.style.setProperty(
-          "--marker-y",
-          `${snapshot.fingertip.y * 100}%`,
-        );
-      }
     }
-    this.applyThumbSnapshots(snapshots);
     this.showContactMeter(snapshots);
   }
 
-  applyThumbSnapshots(snapshots) {
-    for (const hand of ["left", "right"]) {
-      const snapshot = snapshots.find(
-        (candidate) =>
-          candidate.handedness === hand &&
-          candidate.visible &&
-          candidate.thumbTip,
-      );
-      const marker = this.thumbMarker(hand);
-      marker.classList.toggle("is-tracked", Boolean(snapshot));
-      marker.classList.toggle(
-        "is-active",
-        snapshots.some(
-          (candidate) =>
-            candidate.handedness === hand &&
-            (candidate.state === "activated" ||
-              candidate.state === "held"),
-        ),
-      );
-      if (snapshot) {
-        marker.style.setProperty(
-          "--marker-x",
-          `${(1 - snapshot.thumbTip.x) * 100}%`,
-        );
-        marker.style.setProperty(
-          "--marker-y",
-          `${snapshot.thumbTip.y * 100}%`,
-        );
+  applyHandLandmarks(hands) {
+    const byHand = new Map(
+      hands
+        .filter(
+          (hand) =>
+            (hand.handedness === "left" ||
+              hand.handedness === "right") &&
+            Array.isArray(hand.landmarks),
+        )
+        .map((hand) => [hand.handedness, hand]),
+    );
+
+    for (const fingerId of FINGER_IDS) {
+      const [handedness, fingerName] = fingerId.split("_");
+      const hand = byHand.get(handedness);
+      const point =
+        hand?.landmarks?.[FINGERTIP_LANDMARK_INDEX[fingerName]];
+      const marker = this.marker(fingerId);
+      const visible = isVisualPoint(point);
+      marker.classList.toggle("is-tracked", visible);
+      if (visible) {
+        this.positionMarker(marker, point);
       }
     }
+
+    for (const hand of ["left", "right"]) {
+      const point = byHand.get(hand)?.landmarks?.[4];
+      const marker = this.thumbMarker(hand);
+      const visible = isVisualPoint(point);
+      marker.classList.toggle("is-tracked", visible);
+      if (visible) {
+        this.positionMarker(marker, point);
+      }
+    }
+  }
+
+  positionMarker(marker, point) {
+    marker.style.setProperty(
+      "--marker-x",
+      `${(1 - point.x) * 100}%`,
+    );
+    marker.style.setProperty("--marker-y", `${point.y * 100}%`);
   }
 
   showContactMeter(snapshots) {
@@ -442,4 +448,12 @@ export class AppView {
 
 function formatLatency(value) {
   return value === null ? "—" : `${Math.round(value)} ms`;
+}
+
+function isVisualPoint(point) {
+  return (
+    point &&
+    Number.isFinite(point.x) &&
+    Number.isFinite(point.y)
+  );
 }

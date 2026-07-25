@@ -19,6 +19,7 @@ function landmarks() {
 test("live contacts accept a short deliberate tap with hysteresis", () => {
   assert.equal(LIVE_CONTACT_OPTIONS.contactConfirmFrames, 1);
   assert.equal(LIVE_CONTACT_OPTIONS.separationConfirmFrames, 1);
+  assert.equal(LIVE_CONTACT_OPTIONS.minConfidence, 0);
   assert.ok(
     LIVE_CONTACT_OPTIONS.separationThreshold >
       LIVE_CONTACT_OPTIONS.contactThreshold,
