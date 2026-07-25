@@ -1,5 +1,6 @@
 import { BrowserCamera } from "./adapters/browser-camera.js";
 import { ManualContactTracker } from "./adapters/manual-contact-tracker.js";
+import { MediaPipeHandTracker } from "./adapters/mediapipe-hand-tracker.js";
 import { WebSpeechVoicePort } from "./adapters/web-speech-voice.js";
 import { ActivationDispatcher } from "./core/activation-dispatcher.js";
 import {
@@ -19,6 +20,7 @@ const latency = new LatencyMonitor();
 let config = repository.load();
 let cameraActive = false;
 view.renderConfig(config);
+view.setTrackingMode("manual");
 
 const renderLatency = () => {
   view.showLatency(latency.summary("visual"), latency.summary("audio"));
@@ -43,24 +45,47 @@ const dispatcher = new ActivationDispatcher({
   },
 });
 
-const tracker = new ManualContactTracker({
+const processTrackingEvents = (events) => {
+  for (const event of events) {
+    view.applyTrackingEvent(event);
+  }
+  dispatcher.dispatch(events);
+};
+
+const manualTracker = new ManualContactTracker({
+  onEvents: processTrackingEvents,
+});
+manualTracker.bind(view.elements.fingerOverlay);
+
+const visionTracker = new MediaPipeHandTracker({
   onEvents: (events) => {
-    for (const event of events) {
-      view.applyTrackingEvent(event);
-    }
-    dispatcher.dispatch(events);
+    processTrackingEvents(events);
+  },
+  onSnapshots: (snapshots) => view.applyFingerSnapshots(snapshots),
+  onError: (error) => {
+    visionTracker.stop();
+    camera.stop(view.elements.cameraPreview);
+    cameraActive = false;
+    manualTracker.setEnabled(true);
+    view.setTrackingMode("manual");
+    view.setCameraState(
+      "error",
+      `Hand tracking stopped: ${error.message}. Manual controls remain available.`,
+    );
   },
 });
-tracker.bind(view.elements.fingerOverlay);
 
 view.bind({
   onCameraToggle: async () => {
     if (cameraActive) {
+      visionTracker.stop();
       camera.stop(view.elements.cameraPreview);
       cameraActive = false;
+      manualTracker.setEnabled(true);
+      view.setTrackingMode("manual");
       view.setCameraState(
         "off",
-        "Camera stopped. No frames were stored.",
+        "Camera stopped. No frames were stored. Manual controls are available.",
       );
       return;
     }
@@ -71,16 +96,27 @@ view.bind({
     );
     try {
       await camera.start(view.elements.cameraPreview);
+      view.setCameraState(
+        "starting",
+        "Loading the local hand-landmark model…",
+      );
+      await visionTracker.start(view.elements.cameraPreview);
       cameraActive = true;
+      manualTracker.setEnabled(false);
+      view.setTrackingMode("live");
       view.setCameraState(
         "active",
-        "Camera is active locally. Contact tracking is still simulated.",
+        "Camera and on-device hand tracking are active. Frames remain local.",
       );
     } catch (error) {
+      visionTracker.stop();
+      camera.stop(view.elements.cameraPreview);
       cameraActive = false;
+      manualTracker.setEnabled(true);
+      view.setTrackingMode("manual");
       view.setCameraState(
         "error",
-        `Camera could not start: ${error.message}`,
+        `Camera or hand tracking could not start: ${error.message}`,
       );
     }
   },
@@ -120,7 +156,7 @@ view.bind({
 });
 
 window.addEventListener("pagehide", () => {
-  tracker.destroy();
+  manualTracker.destroy();
+  visionTracker.destroy();
   camera.stop(view.elements.cameraPreview);
 });
-

@@ -9,22 +9,21 @@ HTML, CSS, and JavaScript modules. Development, tests, and production assembly
 use Node.js 20 or newer, with Node's built-in test runner and a small repository
 owned static-file server/build script.
 
-The initial scaffold has no production or development package dependencies.
-This is intentional:
+The application shell avoids a UI framework. It has one pinned runtime
+dependency, `@mediapipe/tasks-vision`, for local hand landmarks:
 
 - webcam capture, local persistence, audio output, and rendering are already
   browser capabilities;
 - a framework would not reduce the risk in the tracking or voice pipelines;
 - specialist implementations can be integrated behind ports without coupling
   their algorithms to a UI framework;
-- a dependency-free shell is easy to audit for local-only processing.
+- the checked-in hand-landmarker model and locally served WebAssembly keep
+  camera inference on the device.
 
-The hand-tracking specialist may add a browser-compatible landmark runtime and
-model after measuring its size, latency, browser support, and licensing. The
-robotic-voice specialist may add a local synthesis/processing runtime after
-proving overlapping, intelligible English and Mandarin playback. Those choices
-must remain inside their adapters and must not change the application-facing
-interfaces below.
+The robotic-voice specialist may add a local synthesis model after proving
+overlapping, intelligible English and Mandarin playback. That choice must remain
+inside the voice adapter and must not change the application-facing interfaces
+below.
 
 ## Browser and deployment model
 
@@ -189,27 +188,27 @@ criteria pass.
 
 ## Integration sequence
 
-1. Establish shared constants, object contracts, deterministic dispatch tests,
-   a local configuration repository, and the dependency-free application shell.
-2. Run the shell with local camera preview and a deliberate manual contact
-   harness. This proves editing, persistence, routing, rearming, visual
-   feedback, and voice submission without claiming landmark accuracy.
-3. Replace the manual harness with the hand-tracking adapter while retaining it
-   as an explicit development-only diagnostic control.
-4. Replace provisional UI positioning with tracking-supplied normalized
-   fingertip positions and states.
+1. Completed: establish shared constants, object contracts, deterministic
+   dispatch tests, a local configuration repository, and the application shell.
+2. Completed: prove editing, persistence, routing, visual feedback, and voice
+   submission with the manual contact harness.
+3. Completed for the first prototype: integrate MediaPipe two-hand landmarks
+   with the separation-gated contact tracker while retaining the manual
+   fallback.
+4. Completed for the first prototype: drive fingertip expression labels from
+   normalized tracking positions and states.
 5. Replace browser speech fallback with the four-identity local robotic voice
    adapter and verify truly overlapping playback.
 6. Execute the QA acceptance matrix, measure latency distributions on supported
    devices, and update release readiness.
 
-## Placeholders in the integration scaffold
+## Remaining prototype limitations
 
-- **Hand landmark/contact detection:** webcam capture is real, but contact
-  events come from an on-screen/keyboard development harness until the Hand
-  Tracking implementation lands.
-- **Fingertip positioning:** labels occupy stable demonstration positions until
-  live landmark coordinates are available.
+- **Tracking qualification:** live landmarks and contact/rearm logic are
+  integrated, but thresholds, crossed hands, occlusion, lighting, mobility
+  variation, and supported-device performance still require physical testing.
+- **Manual fallback:** static positions remain visible before the camera starts
+  so the complete routing path can be tested without camera permission.
 - **Robotic voice production:** the browser speech adapter exposes only the four
   TapTalk identities and submits requests independently, but browser engines may
   serialize them and do not guarantee the intended robotic character.

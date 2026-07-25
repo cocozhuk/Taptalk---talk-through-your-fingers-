@@ -20,9 +20,9 @@
             <small>Local integration prototype</small>
           </span>
         </a>
-        <div class="prototype-badge">
+        <div id="prototype-badge" class="prototype-badge">
           <span class="status-dot" aria-hidden="true"></span>
-          Manual contact harness
+          On-device hand tracking
         </div>
       </header>
 
@@ -62,7 +62,7 @@
             <div
               id="finger-overlay"
               class="finger-overlay"
-              aria-label="Manual fingertip contact controls"
+              aria-label="Fingertip expression labels and manual fallback controls"
             ></div>
             <div class="stage-caption">
               <span>Mirrored preview</span>
@@ -81,9 +81,10 @@
 
           <div class="test-harness-note">
             <span class="note-icon" aria-hidden="true">i</span>
-            <p>
-              <strong>Tracking placeholder:</strong> press and hold a fingertip
-              marker, or keys 1–8, to simulate contact. Release to rearm.
+            <p id="tracking-note">
+              <strong>Tracking ready:</strong> start the camera for local hand
+              landmarks. Before the camera starts, press and hold a marker or
+              keys 1–8 to test a contact; release to rearm.
             </p>
           </div>
 
@@ -94,7 +95,7 @@
                 Waiting for contact
               </p>
               <p id="activation-detail" class="activation-detail">
-                Use any of the eight markers
+                Start the camera or use any of the eight markers
               </p>
             </article>
             <article class="latency-card">
@@ -175,4 +176,3 @@
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
-

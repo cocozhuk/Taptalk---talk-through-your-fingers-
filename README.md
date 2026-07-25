@@ -12,24 +12,30 @@ The current runnable integration scaffold includes:
 - exactly four fixed TapTalk voice identities;
 - deterministic timestamp/finger-ID activation dispatch;
 - visual and audible-onset latency instrumentation;
-- a press-and-hold manual contact harness for integration work.
+- on-device MediaPipe landmarks for up to two hands;
+- scale-normalized thumb-to-fingertip contact detection with separation rearm;
+- fingertip-adjacent expression labels driven by live landmark positions;
+- a press-and-hold manual fallback for development and camera-free testing.
 
-Real landmark/contact tracking and production robotic, overlapping speech are
-clearly marked placeholders awaiting their specialist implementations. The
-manual harness proves the shared routing, rearming, persistence, and feedback
-path without claiming that those specialist acceptance criteria pass.
+The first prototype now runs its camera and hand-landmark model locally. The
+four voice identities still use a browser-speech fallback in the integrated UI;
+the separate robotic-voice package proves concurrent PCM playback but still
+needs a licensed English/Mandarin synthesis model before it is production
+quality.
 
 ## Run locally
 
-Node.js 20 or newer is the only prerequisite.
+Node.js 20 or newer is required.
 
 ```sh
+npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173`. Start the camera when ready, then press and hold
-one of the eight fingertip markers (or keyboard keys 1–8) to simulate a
-confirmed contact. Release it to rearm that finger.
+Open `http://127.0.0.1:4173`, start the camera, and hold both hands in view.
+Touch a non-thumb fingertip to the thumb on the same hand; separate them before
+using that finger again. The marker and keyboard controls remain available as a
+camera-free fallback.
 
 ## Verify
 

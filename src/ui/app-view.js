@@ -34,8 +34,10 @@ export class AppView {
       form: documentRef.querySelector("#settings-form"),
       latencySamples: documentRef.querySelector("#latency-samples"),
       mandarinVoice: documentRef.querySelector("#mandarin-voice"),
+      prototypeBadge: documentRef.querySelector("#prototype-badge"),
       reset: documentRef.querySelector("#reset-settings"),
       settingsStatus: documentRef.querySelector("#settings-status"),
+      trackingNote: documentRef.querySelector("#tracking-note"),
       visualLatency: documentRef.querySelector("#visual-latency"),
     };
 
@@ -99,6 +101,14 @@ export class AppView {
         config.assignments[fingerId].text;
       this.languageInput(fingerId).value =
         config.assignments[fingerId].language;
+      const marker = this.marker(fingerId);
+      marker.querySelector(".marker-label").textContent =
+        config.assignments[fingerId].text;
+      const markerIndex = FINGER_IDS.indexOf(fingerId) + 1;
+      marker.setAttribute(
+        "aria-label",
+        `${FINGER_LABELS[fingerId]}, ${config.assignments[fingerId].text}, manual contact keyboard ${markerIndex}`,
+      );
       this.setFieldError(fingerId, "");
     }
     this.elements.englishVoice.value = config.voicePreferences.en;
@@ -159,6 +169,57 @@ export class AppView {
     }
   }
 
+  applyFingerSnapshots(snapshots) {
+    const byFinger = new Map(
+      snapshots.map((snapshot) => [snapshot.fingerId, snapshot]),
+    );
+    for (const fingerId of FINGER_IDS) {
+      const marker = this.marker(fingerId);
+      const snapshot = byFinger.get(fingerId);
+      const visible = Boolean(snapshot?.visible && snapshot.fingertip);
+      marker.classList.toggle("is-tracked", visible);
+      marker.classList.toggle(
+        "is-active",
+        snapshot?.state === "activated" || snapshot?.state === "held",
+      );
+      marker.dataset.trackingState = snapshot?.state ?? "not_visible";
+      if (visible) {
+        marker.style.setProperty(
+          "--marker-x",
+          `${(1 - snapshot.fingertip.x) * 100}%`,
+        );
+        marker.style.setProperty(
+          "--marker-y",
+          `${snapshot.fingertip.y * 100}%`,
+        );
+      }
+    }
+  }
+
+  setTrackingMode(mode) {
+    const live = mode === "live";
+    this.elements.fingerOverlay.classList.toggle(
+      "is-live-tracking",
+      live,
+    );
+    this.elements.prototypeBadge.lastChild.textContent = live
+      ? " Live hand tracking"
+      : " Manual fallback ready";
+    this.elements.trackingNote.innerHTML = live
+      ? "<strong>Live tracking:</strong> touch a fingertip to the thumb on the same hand. Separate them before using that finger again."
+      : "<strong>Manual fallback:</strong> start the camera for local hand landmarks, or press and hold a marker or keys 1–8; release to rearm.";
+
+    if (!live) {
+      for (const [fingerId, [x, y]] of Object.entries(DEMO_POSITIONS)) {
+        const marker = this.marker(fingerId);
+        marker.classList.remove("is-tracked", "is-active");
+        marker.dataset.trackingState = "not_visible";
+        marker.style.setProperty("--marker-x", `${x}%`);
+        marker.style.setProperty("--marker-y", `${y}%`);
+      }
+    }
+  }
+
   showActivation(activation) {
     const identity = VOICE_IDENTITIES[activation.voiceId];
     this.elements.expression.textContent = activation.expression;
@@ -215,4 +276,3 @@ export class AppView {
 function formatLatency(value) {
   return value === null ? "—" : `${Math.round(value)} ms`;
 }
-

@@ -18,15 +18,30 @@ export class ManualContactTracker {
     this.activeFingers = new Set();
     this.frameId = 0;
     this.cleanups = [];
+    this.enabled = true;
   }
 
   contact(fingerId) {
-    if (!isFingerId(fingerId) || this.activeFingers.has(fingerId)) {
+    if (
+      !this.enabled ||
+      !isFingerId(fingerId) ||
+      this.activeFingers.has(fingerId)
+    ) {
       return false;
     }
     this.activeFingers.add(fingerId);
     this.onEvents([this.createEvent("activation", fingerId)]);
     return true;
+  }
+
+  setEnabled(enabled) {
+    this.enabled = Boolean(enabled);
+    if (this.enabled) {
+      return;
+    }
+    for (const fingerId of [...this.activeFingers]) {
+      this.separate(fingerId);
+    }
   }
 
   separate(fingerId) {
@@ -109,4 +124,3 @@ export class ManualContactTracker {
     };
   }
 }
-

@@ -12,28 +12,18 @@ const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".task": "application/octet-stream",
+  ".wasm": "application/wasm",
 };
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${host}:${port}`);
   const pathname = decodeURIComponent(url.pathname);
-  const allowed =
-    pathname === "/" ||
-    pathname === "/index.html" ||
-    pathname.startsWith("/src/");
+  const filePath = resolvePublicPath(pathname);
 
-  if (!allowed) {
+  if (!filePath) {
     response.writeHead(404).end("Not found");
-    return;
-  }
-
-  const requestedPath = pathname === "/" ? "index.html" : pathname.slice(1);
-  const filePath = resolve(projectRoot, requestedPath);
-  if (
-    filePath !== projectRoot &&
-    !filePath.startsWith(`${projectRoot}${sep}`)
-  ) {
-    response.writeHead(403).end("Forbidden");
     return;
   }
 
@@ -44,7 +34,7 @@ const server = createServer(async (request, response) => {
     response.writeHead(200, {
       "Cache-Control": "no-store",
       "Content-Security-Policy":
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'none'; frame-ancestors 'none'",
+        "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'",
       "Content-Type":
         contentTypes[extname(filePath)] ?? "application/octet-stream",
       "Permissions-Policy": "camera=(self), microphone=()",
@@ -61,3 +51,38 @@ server.listen(port, host, () => {
   console.log(`TapTalk development server: http://${host}:${port}`);
 });
 
+function resolvePublicPath(pathname) {
+  if (pathname === "/" || pathname === "/index.html") {
+    return resolve(projectRoot, "index.html");
+  }
+
+  const routes = [
+    {
+      prefix: "/src/",
+      root: resolve(projectRoot, "src"),
+    },
+    {
+      prefix: "/assets/",
+      root: resolve(projectRoot, "assets"),
+    },
+    {
+      prefix: "/vendor/mediapipe/",
+      root: resolve(
+        projectRoot,
+        "node_modules/@mediapipe/tasks-vision",
+      ),
+    },
+  ];
+
+  const route = routes.find(({ prefix }) => pathname.startsWith(prefix));
+  if (!route) {
+    return null;
+  }
+
+  const relativePath = pathname.slice(route.prefix.length);
+  const candidate = resolve(route.root, relativePath);
+  if (candidate !== route.root && !candidate.startsWith(`${route.root}${sep}`)) {
+    return null;
+  }
+  return candidate;
+}

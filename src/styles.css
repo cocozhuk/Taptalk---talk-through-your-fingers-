@@ -350,6 +350,9 @@ h2 {
   transform: translate(-50%, -50%);
   transition:
     background 120ms ease,
+    opacity 120ms ease,
+    top 80ms linear,
+    left 80ms linear,
     transform 120ms ease;
   touch-action: none;
   user-select: none;
@@ -385,10 +388,11 @@ h2 {
 
 .marker-label {
   overflow: hidden;
-  max-width: 0;
+  max-width: 112px;
+  padding-right: 8px;
   font-size: 11px;
   font-weight: 800;
-  opacity: 0;
+  opacity: 1;
   white-space: nowrap;
   transition:
     max-width 160ms ease,
@@ -398,9 +402,22 @@ h2 {
 .finger-marker:hover .marker-label,
 .finger-marker:focus-visible .marker-label,
 .finger-marker.is-active .marker-label {
-  max-width: 84px;
-  padding-right: 8px;
+  max-width: 132px;
   opacity: 1;
+}
+
+.finger-overlay.is-live-tracking .finger-marker {
+  pointer-events: none;
+}
+
+.finger-overlay.is-live-tracking .finger-marker:not(.is-tracked) {
+  opacity: 0;
+}
+
+.finger-marker[data-tracking-state="approaching"],
+.finger-marker[data-tracking-state="contact_candidate"] {
+  border-color: var(--accent);
+  background: rgb(92 48 34 / 90%);
 }
 
 .stage-caption {
@@ -757,4 +774,3 @@ input[aria-invalid="true"] {
     transition-duration: 0.01ms !important;
   }
 }
-
