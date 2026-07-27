@@ -41,6 +41,37 @@ language, translate arbitrary gestures, or guess what the user means. The user
 chooses the vocabulary; TapTalk makes each intentional contact visible and
 audible.
 
+## Run locally
+
+### Requirements
+
+- macOS for the exact Shelley and Tingting native voice pipeline;
+- Node.js 20 or newer;
+- a modern browser with webcam and `MediaRecorder` support;
+- a standard webcam.
+
+### Start TapTalk
+
+```sh
+git clone git@github.com:cocozhuk/Taptalk---talk-through-your-fingers-.git
+cd Taptalk---talk-through-your-fingers-
+npm install
+npm run dev
+```
+
+Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
+
+TapTalk intentionally binds to `127.0.0.1`; the development server is not
+exposed to the local network.
+
+### Useful commands
+
+```sh
+npm run dev      # start the local TapTalk server
+npm test         # run the automated test suite
+npm run build    # assemble the static production files in dist/
+npm run check    # run tests, then build
+
 ## ✦ The first prototype
 
 This repository contains the complete first working prototype:
@@ -96,36 +127,6 @@ These boundaries are intentional parts of TapTalk:
 | Storage | Configuration remains on the device |
 | Interpretation | No sign-language recognition or arbitrary gesture guessing |
 
-## Run locally
-
-### Requirements
-
-- macOS for the exact Shelley and Tingting native voice pipeline;
-- Node.js 20 or newer;
-- a modern browser with webcam and `MediaRecorder` support;
-- a standard webcam.
-
-### Start TapTalk
-
-```sh
-git clone git@github.com:cocozhuk/Taptalk---talk-through-your-fingers-.git
-cd Taptalk---talk-through-your-fingers-
-npm install
-npm run dev
-```
-
-Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
-
-TapTalk intentionally binds to `127.0.0.1`; the development server is not
-exposed to the local network.
-
-### Useful commands
-
-```sh
-npm run dev      # start the local TapTalk server
-npm test         # run the automated test suite
-npm run build    # assemble the static production files in dist/
-npm run check    # run tests, then build
 ```
 
 ## Interaction details
