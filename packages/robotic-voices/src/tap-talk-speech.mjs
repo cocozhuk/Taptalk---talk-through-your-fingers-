@@ -192,9 +192,8 @@ function abortable(promise, signal) {
 /**
  * Create TapTalk's browser playback service.
  *
- * Playback has no global queue. Every successful request receives a distinct
- * AudioBufferSourceNode and processing graph, so already-synthesized phrases
- * can overlap.
+ * Playback has no global queue. Every request preempts the active source, and
+ * synthesis finishing after a newer request is discarded before playback.
  */
 export function createTapTalkSpeech({
   backend,
@@ -203,6 +202,7 @@ export function createTapTalkSpeech({
   onEvent = () => {},
   cacheOptions,
   startLeadSeconds = 0.005,
+  playbackRate = 1.75,
   latencyTracker = new LatencyTracker(),
 } = {}) {
   if (backend === null || typeof backend !== "object" || typeof backend.synthesize !== "function") {
@@ -221,6 +221,9 @@ export function createTapTalkSpeech({
   if (!Number.isFinite(startLeadSeconds) || startLeadSeconds < 0) {
     throw new RangeError("startLeadSeconds must be a non-negative number");
   }
+  if (!Number.isFinite(playbackRate) || playbackRate <= 0 || playbackRate > 4) {
+    throw new RangeError("playbackRate must be greater than 0 and at most 4");
+  }
 
   const cache = new PcmCache(cacheOptions);
   const inFlightSynthesis = new Map();
@@ -229,6 +232,7 @@ export function createTapTalkSpeech({
   const backendRevision = backend.revision ?? "unversioned";
   let warmUpPromise;
   let disposed = false;
+  let latestRequestSequence = 0;
 
   function emit(event) {
     try {
@@ -349,11 +353,16 @@ export function createTapTalkSpeech({
 
   async function speak(request) {
     let identity;
+    let requestSequence;
     try {
       if (disposed) {
         throw new TapTalkSpeechError("disposed", "Speech service has been disposed");
       }
       identity = validateRequest(request);
+      requestSequence = ++latestRequestSequence;
+      for (const playback of [...activePlaybacks]) {
+        playback.stop("interrupted");
+      }
       rememberRequest(request, identity);
       emit({
         type: "speech-requested",
@@ -366,6 +375,12 @@ export function createTapTalkSpeech({
       const { pcm, cacheStatus } = await getPcm(identity, request.text, request.signal);
       if (request.signal?.aborted) {
         throw new TapTalkSpeechError("cancelled", "Speech request was cancelled before playback");
+      }
+      if (disposed || requestSequence !== latestRequestSequence) {
+        throw new TapTalkSpeechError(
+          "cancelled",
+          "Speech request was replaced by a newer activation",
+        );
       }
 
       const source = audioContext.createBufferSource();
@@ -381,9 +396,11 @@ export function createTapTalkSpeech({
       const nodes = [source, dryGain, wetFilter, wetRing, wetGain, compressor, master, oscillator];
       const effect = identity.processing;
       const startAt = audioContext.currentTime + startLeadSeconds;
-      const durationSeconds = pcm.channels[0].length / pcm.sampleRate;
+      const durationSeconds =
+        pcm.channels[0].length / pcm.sampleRate / playbackRate;
       const endAt = startAt + durationSeconds;
 
+      setAudioParam(source.playbackRate, playbackRate, startAt);
       wetFilter.type = "bandpass";
       setAudioParam(wetFilter.frequency, effect.bandpassFrequencyHz, startAt);
       setAudioParam(wetFilter.Q, effect.bandpassQ, startAt);
@@ -436,9 +453,9 @@ export function createTapTalkSpeech({
         onset,
         cacheStatus,
         ended,
-        stop() {
+        stop(reason = "stopped") {
           if (activePlaybacks.has(playback)) {
-            stopReason = "stopped";
+            stopReason = reason;
             stopNode(source, audioContext.currentTime);
           }
         },
@@ -525,6 +542,7 @@ export function createTapTalkSpeech({
       return;
     }
     disposed = true;
+    latestRequestSequence += 1;
     for (const playback of [...activePlaybacks]) {
       playback.stop();
     }

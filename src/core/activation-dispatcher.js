@@ -1,8 +1,8 @@
 import {
   FINGER_IDS,
   activationIdFor,
+  fixedVoiceIdFor,
   isFingerId,
-  voiceIdFor,
 } from "../domain/contracts.js";
 
 const FINGER_RANK = new Map(
@@ -35,8 +35,7 @@ export class ActivationDispatcher {
     onActivation,
     onAudibleStart,
     onSpeechError,
-    onSpeechBusy,
-    onSpeechIdle,
+    onSpeechInterrupted,
     deduplicationLimit = 2048,
   }) {
     this.getConfig = getConfig;
@@ -44,13 +43,12 @@ export class ActivationDispatcher {
     this.onActivation = onActivation ?? (() => {});
     this.onAudibleStart = onAudibleStart ?? (() => {});
     this.onSpeechError = onSpeechError ?? (() => {});
-    this.onSpeechBusy = onSpeechBusy ?? (() => {});
-    this.onSpeechIdle = onSpeechIdle ?? (() => {});
+    this.onSpeechInterrupted = onSpeechInterrupted ?? (() => {});
     this.deduplicationLimit = deduplicationLimit;
     this.seenActivationIds = new Set();
     this.seenActivationOrder = [];
     this.latestFrameBySession = new Map();
-    this.activeActivation = null;
+    this.activeSpeech = null;
   }
 
   dispatch(events) {
@@ -76,17 +74,9 @@ export class ActivationDispatcher {
       );
       this.remember(activationId);
 
-      if (this.activeActivation) {
-        this.onSpeechBusy(event, this.activeActivation);
-        continue;
-      }
-
       const config = this.getConfig();
       const assignment = config.assignments[event.fingerId];
-      const voiceId = voiceIdFor(
-        assignment.language,
-        config.voicePreferences[assignment.language],
-      );
+      const voiceId = fixedVoiceIdFor(assignment.language);
       const activation = {
         activationId,
         fingerId: event.fingerId,
@@ -96,55 +86,81 @@ export class ActivationDispatcher {
         voiceId,
       };
 
-      this.onActivation(activation);
-      accepted.push(activation);
-      this.activeActivation = activation;
+      const previousSpeech = this.activeSpeech;
+      if (previousSpeech) {
+        previousSpeech.interrupted = true;
+        try {
+          this.voicePort.interrupt?.({
+            fingerId: previousSpeech.activation.fingerId,
+            activationId: previousSpeech.activation.activationId,
+            replacedByActivationId: activation.activationId,
+            replacementFingerId: activation.fingerId,
+          });
+        } catch (error) {
+          this.onSpeechError(previousSpeech.activation, error);
+        }
+      }
 
-      let speechErrorReported = false;
+      this.onActivation(activation);
+      if (previousSpeech) {
+        this.onSpeechInterrupted(previousSpeech.activation, activation);
+      }
+      accepted.push(activation);
+
+      const activeSpeech = {
+        activation,
+        interrupted: false,
+        speechErrorReported: false,
+      };
+      this.activeSpeech = activeSpeech;
+
       const reportSpeechError = (error) => {
-        if (speechErrorReported) {
+        if (activeSpeech.interrupted || activeSpeech.speechErrorReported) {
           return;
         }
-        speechErrorReported = true;
+        activeSpeech.speechErrorReported = true;
         this.onSpeechError(activation, error);
       };
 
       const request = {
         activationId,
+        fingerId: activation.fingerId,
         text: activation.expression,
         language: activation.language,
         voiceId: activation.voiceId,
         confirmedAtMs: activation.confirmedAtMs,
-        onAudibleStart: (startedAtMs) =>
-          this.onAudibleStart(activation, startedAtMs),
+        onAudibleStart: (startedAtMs) => {
+          if (
+            !activeSpeech.interrupted &&
+            this.activeSpeech === activeSpeech
+          ) {
+            this.onAudibleStart(activation, startedAtMs);
+          }
+        },
         onError: reportSpeechError,
       };
 
       try {
         Promise.resolve(this.voicePort.speak(request)).then(
-          () => this.finishSpeech(activation, null),
+          () => this.finishSpeech(activeSpeech),
           (error) => {
             reportSpeechError(error);
-            this.finishSpeech(activation, error);
+            this.finishSpeech(activeSpeech);
           },
         );
       } catch (error) {
         reportSpeechError(error);
-        this.finishSpeech(activation, error);
+        this.finishSpeech(activeSpeech);
       }
     }
 
     return accepted;
   }
 
-  finishSpeech(activation, error) {
-    if (
-      this.activeActivation?.activationId !== activation.activationId
-    ) {
-      return;
+  finishSpeech(activeSpeech) {
+    if (this.activeSpeech === activeSpeech) {
+      this.activeSpeech = null;
     }
-    this.activeActivation = null;
-    this.onSpeechIdle(activation, error);
   }
 
   remember(activationId) {

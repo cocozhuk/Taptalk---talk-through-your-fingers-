@@ -80,7 +80,7 @@ semantics.
   non-thumb finger, plus ten 10-second hold trials.
 - Full normal-condition evidence uses 20 consecutive cycles for each of the
   eight stable finger IDs, plus five 10-second hold trials per finger.
-- Hand-loss, rapid-contact, and overlapping-audio cases use 20 trials each.
+- Hand-loss, rapid-contact, and audio-preemption cases use 20 trials each.
 - Environmental and mobility characterizations use at least ten deliberate
   contacts in each named condition. The result and activation rate are reported
   per condition, never only as an aggregate.
@@ -103,7 +103,7 @@ Every test run records:
 
 1. build/commit, date, tester, operating system, browser/runtime, camera model,
    requested and observed resolution/frame rate;
-2. test IDs, assignment map, language and voice preferences;
+2. test IDs, assignment map, language, and fixed voice routes;
 3. ambient-light reading or repeatable lighting description, background,
    camera position, mirroring state, and declared support status;
 4. monotonic event trace for visibility, contact confirmation, activation,
@@ -136,7 +136,7 @@ proof that violates them.
 | NP-06 | P1 | Capture `contact-confirmed` and actual first-painted selection acknowledgement on a common monotonic timeline. | The assigned expression is correct and becomes visible on the first UI render after activation. Report contact-to-visual p50, p95, maximum, and sample count. A state update that is not painted is not acknowledgement. |
 | NP-07 | P1 | Measure from recognition state-machine confirmation to actual audible waveform onset for 30 normal-condition trials. Do not substitute speech-request time for audio onset. | A compatible robotic voice speaks the correct expression; all recorded normal-condition trials begin audibly within 500 ms. Report p50, p95, maximum, and failures. |
 | NG-01 | P0 | Review the explanation shown before the operating-system camera prompt, denial behavior, and camera-active state. | The explanation states why the camera is needed before prompting; denial does not start capture; a persistent visible indicator is present whenever capture is active. |
-| NG-02 | P0 | Run the proof from a production build under network capture and inventory files/storage before, during, and after use. | No webcam frame, derived image, configured expression, or voice preference is uploaded. No webcam frame is retained by default. Any unrelated runtime network traffic is documented and contains none of this data. |
+| NG-02 | P0 | Run the proof from a production build under network capture and inventory files/storage before, during, and after use. | No webcam frame, derived image, configured expression, or routing field is uploaded. No webcam frame is retained by default. Any unrelated runtime network traffic is documented and contains none of this data. |
 | NG-03 | P0 | Review every user-facing scope, privacy, reliability, and accessibility claim in the proof. | The proof identifies itself as experimental; does not claim sign-language/arbitrary-gesture/intent recognition; states the tested environment and known limitations; and makes no unsupported accessibility, privacy, or reliability claim. |
 
 ### Narrow proof decision
@@ -185,8 +185,8 @@ condition must become a visible limitation, not disappear from the report.
 
 | ID | Pri. | Coverage and method | Hard pass criteria |
 |---|---:|---|---|
-| CC-01 | P1 | Run 20 rapid sequences across different fingers and 20 rapid separated-contact cycles on the same finger, varying intervals down to the documented supported limit. | Every confirmed activation is dispatched once in confirmation-timestamp order. The same finger does not reactivate without confirmed separation. Detection/confirmation limits and misses are reported. |
-| CC-02 | P0 | Produce two contacts with distinguishable confirmation timestamps in both left-first and right-first orders. Compare confirmation, dispatch, visual, and playback-request traces. | First confirmed is first dispatched in every trial. Later audio is not forced to wait for earlier playback to finish. |
+| CC-01 | P1 | Run 20 rapid sequences across different fingers and 20 rapid separated-contact cycles on the same finger, varying intervals down to the documented supported limit. Include three taps on one finger assigned `slay`. | Every confirmed activation is dispatched once in confirmation-timestamp order. The same finger does not reactivate without confirmed separation, and there is no additional UI/audio cooldown after rearm. Each accepted tap interrupts the previous phrase, so the three-tap case can produce `s`, `s`, `slay`. |
+| CC-02 | P0 | Produce two contacts with distinguishable confirmation timestamps in both left-first and right-first orders. Compare confirmation, dispatch, visual, playback-request, and interruption traces. | First confirmed is first submitted. The second activation immediately interrupts it and starts, regardless of finger. Neither request waits or enters a delayed queue. |
 | CC-03 | P1 | Reproduce contacts assigned the same timestamp/video frame and repeat with the same trace. | Dispatch order is deterministic and matches the documented stable finger-ID tie-break. This test is `BLOCKED-DECISION` until Architecture records the exact order; repeatability alone is insufficient. |
 | CC-04 | P1 | Run three or more near-simultaneous contacts, including one held contact and a rearmed contact. | The ordered activation list is a stable sort of confirmation time plus the approved tie-break, with no dropped or duplicate confirmed event. Each finger retains independent held/rearmed state. |
 
@@ -205,21 +205,22 @@ non-destructive editing behavior.
 | VA-04 | P1 | Execute digit, punctuation, emoji, and ambiguous-script cases from the fixture. | The current provisional implementation rejects them with a clear message. The final expected result is `BLOCKED-DECISION` until Architecture settles the policy; QA updates the fixture after an accepted contract/decision change. |
 | VA-05 | P1 | Assign valid English and Mandarin expressions to different fingers in the same saved configuration, reload, activate, edit, cancel, and reset. | Cross-finger language mixing remains valid; each finger retains exactly one one-language expression; persistence never changes the string, language, or finger association. |
 
-### Voice identity, routing, and concurrency
+### Voice identity, routing, and preemption
 
 | ID | Pri. | Coverage and method | Hard pass criteria |
 |---|---:|---|---|
-| VO-01 | P1 | Use unique English and Mandarin assignments across fingers and switch the masculine/feminine preference for each language. Inspect routing and audible output. | Expression language, not hand or finger, selects English versus Mandarin. The correct preference selects the matching masculine/feminine identity. Per-language preference completion is `BLOCKED-DECISION` until Architecture freezes that provisional model. |
-| VO-02 | P1 | Inspect every user-facing voice control and runtime route. | Exactly four TapTalk identities are exposed: English masculine/feminine and Mandarin masculine/feminine. No operating-system/system-voice catalogue is exposed. |
-| VO-03 | P1 | Trigger several expressions after the first becomes audible but before it completes; run English/English, Mandarin/Mandarin, and cross-language sequences for 20 total trials. Inspect request streams where possible. | Only the earliest expression is submitted and spoken. Busy-time taps receive visible discarded feedback and never play after the first expression finishes. |
+| VO-01 | P1 | Use unique English and Mandarin assignments across fingers, including a stored legacy configuration with opposite preference values. Inspect routing and audible output. | English always uses the locked masculine voice and Mandarin always uses the locked young-adult feminine voice. Legacy preferences do not alter routing. |
+| VO-02 | P1 | Inspect the complete interface and runtime route. | No voice-choice controls or operating-system/system-voice catalogue are exposed. |
+| VO-03 | P1 | Trigger a second long expression after the first becomes audible but well before it completes. Run same-finger and different-finger English/English, Mandarin/Mandarin, and cross-language pairs for 20 total trials. Isolate request streams or waveforms where possible. | The current phrase is cut off and replaced by the newest request in every case, with no backlog. Only the final request completes when taps continue. |
 | VO-04 | P1 | Review asset/model provenance and perform an intelligibility/identity listening check without prompting listeners with protected character names. | Each output is intelligible in its assigned language and distinguishable as the selected synthetic, mechanical TapTalk identity. Provenance contains no cloning or imitation instruction for a protected character. QA does not make a legal non-infringement determination. |
+| VO-05 | P1 | Alternate same-finger and different-finger activations while natural-speed speech is still playing. Record the output waveform and run at least 20 pairs per language. | Every newer output begins without waiting for the old phrase to finish. Interrupted speech is neither resumed nor queued, and the newest output remains intelligible. |
 
 ### Visual and audio latency
 
 | ID | Pri. | Coverage and method | Hard pass criteria |
 |---|---:|---|---|
-| LT-01 | P1 | Instrument contact confirmation and actual first painted acknowledgement on a common monotonic clock. Run normal, rapid, and overlapping cases per finger. | Correct expression/feedback appears on the first render after activation. Report p50, p95, maximum, and missing-paint count by condition; a state update that never paints fails. |
-| LT-02 | P1 | Capture contact confirmation and real audible onset using calibrated loopback or microphone/audio analysis. Include warm and first-use runs, both languages, every identity, and overlap. | Under each declared normal supported condition, all measured trials begin within 500 ms. Report p50, p95, maximum, sample count, measurement uncertainty, and failures. Playback-request time is not a substitute. |
+| LT-01 | P1 | Instrument contact confirmation and actual first painted acknowledgement on a common monotonic clock. Run normal and rapid-preemption cases per finger. | Correct expression/feedback appears on the first render after activation. Report p50, p95, maximum, and missing-paint count by condition; a state update that never paints fails. |
+| LT-02 | P1 | Capture contact confirmation and real audible onset using calibrated loopback or microphone/audio analysis. Include warm and first-use runs, both languages, every identity, and rapid preemption. | Under each declared normal supported condition, all measured trials begin within 500 ms. Report p50, p95, maximum, sample count, measurement uncertainty, and failures. Playback-request time is not a substitute. |
 | LT-03 | P2 | Compare visual and audible onset traces. | Visual acknowledgement precedes audible onset whenever the render path can produce a frame first. Any audio-first result is reported with evidence of whether earlier visual acknowledgement was technically possible; repeated unexplained audio-first output fails the “visual earlier whenever possible” expectation. |
 
 ### Privacy, persistence, and camera permission
@@ -228,7 +229,7 @@ non-destructive editing behavior.
 |---|---:|---|---|
 | PR-01 | P0 | Review production code/dependencies and run first use, tracking, configuration, speech, hand loss, and reset under network capture. Test with the network unavailable. | No frame, derived image, landmark payload, configured expression, or preference leaves the device. Frame analysis continues locally. If speech cannot operate without sending configured text, the local-configuration requirement fails. Unrelated traffic is enumerated and shown not to contain protected data. |
 | PR-02 | P0 | Inventory browser/app storage, caches, temporary files, logs, crash reports, and media artifacts before/during/after a session. | No webcam frame or recoverable frame sequence is stored or retained by default. Logs contain no image data and no unnecessary expression content. Only documented on-device configuration is persistent. |
-| PR-03 | P1 | Save all eight assignments and both language preferences, reload/restart, then invoke reset and inspect storage directly. | Values persist only on device and remain correctly associated. Reset clearly warns what it removes, clears all stored assignments/preferences, and a subsequent start does not restore them. |
+| PR-03 | P1 | Save all eight assignments, reload/restart, then invoke reset and inspect storage directly. | Assignments persist only on device and remain correctly associated. Reset clearly warns what it removes, clears the stored configuration, and a subsequent start does not restore it. |
 | PR-04 | P0 | Start from a fresh permission state. Exercise allow, deny, dismiss, retry, revoke while active, device unavailable, and device removed. | A plain-language explanation precedes the OS prompt. Denial/dismissal does not capture and leads to actionable recovery. Revocation/device loss ends active capture and shows an accurate state without phantom activation. |
 | PR-05 | P0 | Observe all screens, tabs/windows, and responsive sizes while capture is active, paused, stopped, denied, or interrupted. | A persistent, non-color-only camera-active indication is visible whenever capture is active and never falsely indicates capture after it stops. The interface never claims the OS indicator replaces TapTalk's own indication. |
 
@@ -236,7 +237,7 @@ non-destructive editing behavior.
 
 | ID | Pri. | Coverage and method | Hard pass criteria |
 |---|---:|---|---|
-| AX-01 | P1 | Use only keyboard to reach and operate setup, camera start/retry, all eight expression editors, language and voice controls, save/cancel, reset, help, and any modal. Repeat at 200% text zoom where applicable. | Controls have a logical focus order, visible un-obscured focus, correct accessible name/role/state, standard activation keys, and no keyboard trap or timing-dependent keystroke. Pointer-only editing or permission recovery fails. |
+| AX-01 | P1 | Use only keyboard to reach and operate setup, camera start/retry, all eight expression editors, language controls, save/cancel, reset, help, and any modal. Repeat at 200% text zoom where applicable. | Controls have a logical focus order, visible un-obscured focus, correct accessible name/role/state, standard activation keys, and no keyboard trap or timing-dependent keystroke. Pointer-only editing or permission recovery fails. |
 | AX-02 | P1 | Evaluate whether the primary “select expression and speak it” function has an architecture-approved non-camera input path. | The existing configuration UI is keyboard-accessible. Because the contract defines exactly eight physical finger inputs and no alternative activation path, full keyboard equivalence is `BLOCKED-DECISION`; TapTalk must not claim full keyboard or WCAG conformance unless Architecture approves a behavior-preserving solution. The limitation must be disclosed in the prototype. |
 | AX-03 | P1 | Measure computed foreground/background pairs for text, input errors, labels, fingertip overlays, tracking/contact states, camera indicator, and focus. Test over representative light/dark camera imagery. | Normal text is at least 4.5:1; large text is at least 3:1; required UI boundaries, focus, and meaningful graphics are at least 3:1 against adjacent colors. Correct selection, error, tracking, and camera state do not rely on color alone. |
 | AX-04 | P1 | Enable the operating system/browser reduced-motion preference and exercise setup, tracking, contact feedback, errors, and navigation. Inspect automatic and contact-triggered effects. | Non-essential position/scale motion is removed or disabled under reduced motion. Essential state remains available without animation. Nothing flashes more than three times in any one-second period, and no critical status is conveyed only by motion. |
@@ -280,7 +281,6 @@ These are requests for clarification, not proposed behavior:
 | Hand-loss and camera-interruption recovery | TR-05, TR-07, PR-04 | Eligibility/state transition after loss, reacquisition, revocation, and device restart |
 | Same-frame deterministic tie-break | CC-03, CC-04 | Complete ordered list of the eight stable finger IDs |
 | Punctuation, digit, emoji, and ambiguous-script policy | VA-04 | Accept/reject and unit-count behavior plus required error semantics |
-| Final voice preference model | VO-01 | Whether the provisional masculine/feminine preference per language is final |
 | Supported operating envelope | EV-01 through EV-06, LT-02 | Minimum supported cameras, frame rate/resolution, lighting/background range, and how mobility/tremor limitations are stated |
 | Keyboard equivalence of primary activation | AX-02 | Whether an alternative activation path is allowed without violating the exactly-eight-finger interaction boundary |
 

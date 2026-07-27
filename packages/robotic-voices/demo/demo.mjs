@@ -57,7 +57,7 @@ unlockButton.addEventListener("click", async () => {
   try {
     await speech.unlock();
     status.textContent =
-      "Audio ready. Press routes quickly or together to hear overlapping tones.";
+      "Audio ready. Press routes quickly to hear each newest tone replace the last.";
     unlockButton.disabled = true;
     for (const button of voiceButtons) {
       button.disabled = false;

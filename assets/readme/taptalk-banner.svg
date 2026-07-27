@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title description">
+  <title id="title">TapTalk — talk through your fingers</title>
+  <desc id="description">A dreamy pastel TapTalk banner with red fingertip dots and colorful floating words.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f9fbff"/>
+      <stop offset=".46" stop-color="#e8efff"/>
+      <stop offset="1" stop-color="#fff0f8"/>
+    </linearGradient>
+    <radialGradient id="glow-blue">
+      <stop offset="0" stop-color="#80d8f7" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#80d8f7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow-pink">
+      <stop offset="0" stop-color="#ff91c8" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#ff91c8" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="7" stdDeviation="12" flood-color="#17264a" flood-opacity=".13"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="360" rx="34" fill="url(#sky)"/>
+  <circle cx="120" cy="42" r="190" fill="url(#glow-blue)"/>
+  <circle cx="1090" cy="34" r="220" fill="url(#glow-pink)"/>
+
+  <g opacity=".58" fill="none" stroke="#718bd7">
+    <path d="M38 274C156 210 205 315 319 248S496 252 585 224" stroke-width="2"/>
+    <path d="M787 74c97 53 162-30 277 34" stroke-width="2"/>
+    <circle cx="1024" cy="255" r="58"/>
+    <circle cx="1024" cy="255" r="76" opacity=".45"/>
+  </g>
+
+  <g fill="#17264a">
+    <path d="M73 86l4.5 12.5L90 103l-12.5 4.5L73 120l-4.5-12.5L56 103l12.5-4.5z" fill="#718bd7"/>
+    <path d="M1104 246l3.5 9.5 9.5 3.5-9.5 3.5-3.5 9.5-3.5-9.5-9.5-3.5 9.5-3.5z" fill="#a514ff"/>
+    <circle cx="1118" cy="90" r="5" fill="#ff91c8"/>
+    <circle cx="88" cy="292" r="5" fill="#a8dc34"/>
+  </g>
+
+  <g filter="url(#soft-shadow)">
+    <rect x="247" y="61" width="706" height="238" rx="34" fill="#ffffff" fill-opacity=".6" stroke="#ffffff" stroke-width="2"/>
+  </g>
+
+  <g font-family="Arial, Helvetica Neue, sans-serif" font-style="italic">
+    <text x="600" y="169" text-anchor="middle" fill="#17264a" font-size="96" font-weight="400" letter-spacing="-8">TapTalk</text>
+    <text x="600" y="217" text-anchor="middle" fill="#53638f" font-size="24" font-weight="400" letter-spacing="3">TALK THROUGH YOUR FINGERS</text>
+  </g>
+
+  <g font-family="Arial, Helvetica Neue, PingFang SC, sans-serif" font-style="italic" font-size="31">
+    <text x="174" y="150" fill="#1637ff">hello</text>
+    <circle cx="191" cy="164" r="9" fill="#ff1018" stroke="#bc0008"/>
+    <text x="953" y="151" fill="#4be000">你好</text>
+    <circle cx="976" cy="165" r="9" fill="#ff1018" stroke="#bc0008"/>
+    <text x="122" y="228" fill="#a514ff">thank you</text>
+    <circle cx="187" cy="242" r="9" fill="#ff1018" stroke="#bc0008"/>
+    <text x="985" y="222" fill="#1637ff">谢谢</text>
+    <circle cx="1008" cy="237" r="9" fill="#ff1018" stroke="#bc0008"/>
+  </g>
+
+  <g transform="translate(569 257)">
+    <circle cx="31" cy="0" r="13" fill="#ff1018" stroke="#bc0008"/>
+    <circle cx="31" cy="0" r="22" fill="none" stroke="#ff1018" stroke-opacity=".18" stroke-width="7"/>
+    <circle cx="0" cy="0" r="4" fill="#718bd7"/>
+    <circle cx="62" cy="0" r="4" fill="#718bd7"/>
+    <path d="M6 0c12-23 38-23 50 0" fill="none" stroke="#718bd7" stroke-width="2"/>
+  </g>
+</svg>

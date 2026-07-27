@@ -10,7 +10,7 @@ const FUNDAMENTALS = Object.freeze({
 /**
  * Non-speech engineering backend for tests and wiring demos only.
  *
- * It proves routing, caching, processing, overlap and onset instrumentation.
+ * It proves routing, caching, processing, preemption and onset instrumentation.
  * It is not intelligible TTS and must never be presented as a TapTalk voice.
  */
 export function createDiagnosticToneBackend({

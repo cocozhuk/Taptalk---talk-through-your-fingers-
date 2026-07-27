@@ -6,8 +6,8 @@ Status: specialist recommendation and isolated browser-audio proof, 2026-07-25
 
 Use an in-browser, worker-hosted TTS runtime that returns PCM to the main
 thread, then use `@taptalk/robotic-voices` for routing, caching, restrained
-robotic processing, concurrent Web Audio playback, failure events, and latency
-instrumentation.
+robotic processing, global newest-request preemption, rate-controlled Web Audio
+playback, failure events, and latency instrumentation.
 
 The first runtime candidate to benchmark is sherpa-onnx WebAssembly with the
 `kokoro-multi-lang-v1_0` model package. That single package exposes American
@@ -32,8 +32,9 @@ reference target.
 
 The browser Web Speech API is useful for a throwaway single-utterance demo, but
 its `speak()` method adds each utterance to a shared queue. That conflicts with
-TapTalk's required overlapping playback. It also does not expose generated
-samples to Web Audio, so the robotic processing and real audio cache cannot be
+TapTalk's immediate newest-tap replacement rule unless cancellation is managed
+globally. It also does not expose generated samples to Web Audio, so the
+robotic processing, playback-rate control, and real audio cache cannot be
 portable. The `start` event says the utterance began, but it does not provide
 the same scheduling and output-latency control as an `AudioBufferSourceNode`.
 
@@ -42,18 +43,22 @@ A PCM boundary avoids those constraints:
 ```text
 activation
   -> route exact TapTalk identity
+  -> stop active playback and invalidate older synthesis
   -> PCM cache hit, or synthesize in local worker
-  -> create a new Web Audio source and effect graph
-  -> start without waiting for any other playback
+  -> create a rate-controlled Web Audio source and effect graph
+  -> start only if this remains the newest request
   -> emit estimated onset and completion/failure events
 ```
 
 The eight editable expressions form a deliberately small working set. After
 model warm-up, pre-synthesize all eight whenever assignments or per-language
 voice preferences change. Cache hits make contact-to-schedule time independent
-of inference speed and let multiple activations overlap. In-flight cache
-deduplication prevents two simultaneous first requests for the same phrase
-from duplicating synthesis.
+of inference speed and make short expressions responsive enough for rapid
+preemption. In-flight cache deduplication prevents two simultaneous first
+requests for the same phrase from duplicating synthesis. The default 1.75× PCM
+playback rate is an implementation starting point for the warmed 500-ms
+one-unit completion target; listening tests must qualify intelligibility in
+both languages.
 
 ## Stable speech interface
 
@@ -142,24 +147,27 @@ backend revision, identity, and exact text. A backend revision change cannot
 reuse stale audio. Production should tune the byte limit from measurements on
 low-memory target devices.
 
-## Overlap and ordering
+## Preemption and ordering
 
 Integration submits activation calls in its already-determined timestamp and
 finger-ID order. This package does not reorder them and has no playback queue.
-Every successful call creates a fresh `AudioBufferSourceNode`, oscillator, and
-effect graph. Cached requests can therefore begin together even when their
-earlier audio is still playing.
+Every new valid call stops active playback immediately. It creates a fresh
+`AudioBufferSourceNode`, oscillator, and effect graph only after its PCM is
+ready and only if no newer request has superseded it. At most one request may
+play.
 
 A single TTS worker may internally serialize cache misses. To protect the
-500-ms target, integration should pre-cache all eight expressions. If live
-configuration testing shows cache misses must also overlap, benchmark a
-two-worker inference pool against its model-memory cost; do not solve it by
-serializing playback.
+500-ms onset and one-unit completion targets, integration should pre-cache all
+eight expressions. If live configuration testing shows cache misses are too
+slow, benchmark a two-worker inference pool against its model-memory cost; do
+not solve it by delaying a newer request behind old speech.
 
 ## Failure behavior
 
-- Fail only the affected request and emit a typed `speech-failed` event.
-- Do not cancel or duck other active voices.
+- Fail only the affected current request and emit a typed `speech-failed`
+  event.
+- Treat replacement cancellation as expected control flow, not as a reason to
+  replay or queue old speech.
 - Do not substitute a system voice, another language, or another identity.
 - Do not speak an error phrase; UI provides immediate visible failure state.
 - Evict rejected in-flight synthesis so a later activation may retry.
@@ -199,7 +207,7 @@ an acceptance result.
 | ONNX Runtime Web with a custom exported model | Broad browser WASM support and optional WebGPU acceleration | TapTalk must own preprocessing, model integration, and model/operator compatibility; WebGPU support is less uniform than WASM |
 | Browser `speechSynthesis` | Smallest integration and broad basic availability | Shared utterance queue, OS-dependent identity/quality, no PCM/DSP cache; rejected for TapTalk playback |
 | Remote TTS | Easy access to high-quality managed voices | Network latency and availability, sends expression text off-device, complicates privacy/storage expectations, and cannot guarantee the 500-ms target |
-| Pre-rendered assets only | Fast, local, overlap-safe | Cannot speak editable expressions; useful only for fixed diagnostics |
+| Pre-rendered assets only | Fast, local, preemption-safe | Cannot speak editable expressions; useful only for fixed diagnostics |
 
 The sherpa-onnx codebase is Apache-2.0, and the inspected Kokoro packages contain
 Apache license files. Kokoro's English frontend can include eSpeak NG data,
@@ -228,4 +236,4 @@ deliberately not speech and must never be described as a voice demo. No model,
 voice pack, third-party runtime, or generated voice asset is vendored because
 the repository has no web scaffold or dependency policy yet. The stable PCM
 interface allows Integration to add the selected worker backend without
-changing activation callers or the overlap/caching/measurement behavior.
+changing activation callers or the preemption/caching/measurement behavior.

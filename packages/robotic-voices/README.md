@@ -8,9 +8,10 @@ This package owns the browser-side speech boundary for exactly four identities:
 - `zh-feminine`
 
 It routes explicit language and gender preferences, caches synthesized PCM,
-adds a restrained mechanical Web Audio layer, permits overlapping playback,
-reports typed failures, and records request-to-onset measurements. It does not
-validate expression content and does not expose a speech-engine voice list.
+adds a restrained mechanical Web Audio layer, immediately preempts older
+playback, reports typed failures, and records request-to-onset measurements.
+It does not validate expression content and does not expose a speech-engine
+voice list.
 
 ## Integration
 
@@ -37,8 +38,8 @@ await speech.warmUp(
 // Must run inside a click/tap handler so browser autoplay policy can unlock it.
 await speech.unlock();
 
-// Do not await one activation before submitting the next. Each call gets its
-// own Web Audio source and may overlap with all currently playing requests.
+// Do not await one activation before submitting the next. Each call immediately
+// stops or supersedes the previous request so the newest activation owns audio.
 const playbackPromise = speech.speak({
   requestId: activation.id,
   text: assignment.text,
@@ -63,7 +64,7 @@ measurement. QA can feed loopback or instrumented observations back through
   retry.
 - Cached phrases remain playable if later synthesis fails.
 - There is no `speechSynthesis` fallback because it would silently replace the
-  identity and globally queue concurrent activations.
+  identity and does not provide the same PCM timing and interruption control.
 - UI feedback owns the user-facing error state; this package does not speak an
   error message that could mask or delay another activation.
 
@@ -75,4 +76,4 @@ must never be presented as the four product voices.
 
 Serve this directory over HTTP and open `demo/index.html` to exercise the real
 browser audio path. The page repeats the same non-speech warning and displays
-active playback, cache state, and estimated median/p95 timing.
+current playback, cache state, and estimated median/p95 timing.

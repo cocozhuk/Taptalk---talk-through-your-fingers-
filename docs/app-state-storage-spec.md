@@ -14,9 +14,9 @@ without defining tracking thresholds, UI layout, or voice processing.
 - A valid configuration has exactly one valid expression for every finger.
 - An expression is either English (`en`) or Mandarin Chinese (`zh`), never
   mixed.
-- Voice preference is stored independently for `en` and `zh`; each preference
-  is `masculine` or `feminine`.
-- Persisted data contains only assignments, language tags, voice preferences,
+- Version 1 retains fixed routing compatibility values: `en: masculine` and
+  `zh: feminine`. They are not user preferences and dispatch ignores changes.
+- Persisted data contains only assignments, language tags, fixed routing values,
   and a schema version. Tracking events and camera data are never persisted.
 - Routing is deterministic. Speech requests are submitted in activation order
   but are not placed behind a global completion queue.
@@ -167,8 +167,9 @@ Activation {
 `dispatchRouteResult(result, sinks)` first calls the UI activation sink in
 activation order. It then invokes every speech sink in that same order without
 awaiting an earlier request. It returns one shared settlement promise for
-diagnostics only. A speech engine may therefore overlap requests, while
-submission order remains first-confirmed-first-served.
+diagnostics only. Integration applies the global newest-wins interruption
+policy at the speech port, while submission order remains
+first-confirmed-first-served.
 
 The core does not select a system voice, synthesize audio, wait for playback,
 or define a robotic personality.

@@ -2,7 +2,6 @@ import {
   FINGER_IDS,
   LANGUAGES,
   isFingerId,
-  voiceIdFor,
 } from "../domain/contracts.js";
 
 export const STORAGE_KEY = "taptalk.config.v1";
@@ -35,6 +34,20 @@ export function createDefaultConfig() {
   };
 }
 
+export function detectExpressionLanguage(text) {
+  const normalizedText = typeof text === "string" ? text.trim() : "";
+  if (!normalizedText) {
+    return null;
+  }
+  if (/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/u.test(normalizedText)) {
+    return "en";
+  }
+  if (Array.from(normalizedText).every((character) => /^\p{Script=Han}$/u.test(character))) {
+    return "zh";
+  }
+  return null;
+}
+
 export function validateExpression(text, language) {
   const normalizedText = typeof text === "string" ? text.trim() : "";
 
@@ -43,7 +56,9 @@ export function validateExpression(text, language) {
       valid: false,
       normalizedText,
       units: 0,
-      error: "Choose English or Mandarin Chinese.",
+      error: normalizedText
+        ? "Use only English words or Chinese characters."
+        : "Enter an expression.",
     };
   }
 
@@ -133,16 +148,6 @@ export function validateConfig(config) {
     }
   }
 
-  for (const language of Object.keys(LANGUAGES)) {
-    const preference = config.voicePreferences?.[language];
-    try {
-      voiceIdFor(language, preference);
-    } catch {
-      errors[`voice_${language}`] =
-        `Choose a masculine or feminine ${LANGUAGES[language]} voice.`;
-    }
-  }
-
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
@@ -156,7 +161,10 @@ export function normalizeConfig(config) {
       language: assignment.language,
     };
   }
-  normalized.voicePreferences = { ...config.voicePreferences };
+  normalized.voicePreferences = {
+    en: "masculine",
+    zh: "feminine",
+  };
   return normalized;
 }
 
@@ -197,4 +205,3 @@ export class ConfigRepository {
     return createDefaultConfig();
   }
 }
-

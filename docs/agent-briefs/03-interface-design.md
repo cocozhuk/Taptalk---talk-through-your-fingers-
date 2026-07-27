@@ -11,7 +11,7 @@ without asking the user to memorize the configuration.
 - Anchor labels beside the correct fingertips.
 - Design separated, approaching, confirmed, held, lost, and error feedback.
 - Design eight-expression editing and language-aware length validation.
-- Expose exactly four TapTalk voice identities with no system catalogue.
+- Expose no voice picker; English and Mandarin use their locked defaults.
 - Design onboarding, camera permission, calibration, reset, and recovery.
 - Keep the interaction accessible and usable under time pressure.
 
@@ -25,4 +25,3 @@ without asking the user to memorize the configuration.
 
 Produce the complete first-prototype screen and state specification, followed
 by implementation of the UI area when shared application scaffolding is ready.
-

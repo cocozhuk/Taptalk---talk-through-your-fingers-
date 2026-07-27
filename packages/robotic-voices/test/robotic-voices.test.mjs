@@ -67,6 +67,8 @@ class FakeScheduledNode extends FakeAudioNode {
 }
 
 class FakeBufferSource extends FakeScheduledNode {
+  playbackRate = new FakeAudioParam();
+
   start(atTime) {
     super.start(atTime);
     this.context.startedSources.push(this);
@@ -264,7 +266,7 @@ test("warm-up deduplicates in-flight synthesis and subsequent playback hits PCM 
   await playback.ended;
 });
 
-test("separate Web Audio sources start without globally serializing playback", async () => {
+test("a new request interrupts active Web Audio playback regardless of language", async () => {
   const context = new FakeAudioContext();
   const speech = createTapTalkSpeech({
     backend: {
@@ -277,30 +279,69 @@ test("separate Web Audio sources start without globally serializing playback", a
     clock: { now: () => 1000 },
   });
 
-  const [first, second] = await Promise.all([
-    speech.speak(request()),
-    speech.speak(
-      request({
-        requestId: "activation-2",
-        text: "你好",
-        language: "zh",
-        gender: "feminine",
-        confirmedAtMs: 905,
-      }),
-    ),
-  ]);
+  const first = await speech.speak(request());
+  const second = await speech.speak(
+    request({
+      requestId: "activation-2",
+      text: "你好",
+      language: "zh",
+      gender: "feminine",
+      confirmedAtMs: 905,
+    }),
+  );
 
   assert.equal(context.startedSources.length, 2);
   assert.notEqual(context.startedSources[0], context.startedSources[1]);
-  assert.equal(speech.activePlaybackCount(), 2);
-  assert.equal(context.startedSources[0].startedAt, context.startedSources[1].startedAt);
-
-  context.startedSources[0].finish();
-  assert.equal((await first.ended).reason, "ended");
+  assert.equal((await first.ended).reason, "interrupted");
   assert.equal(speech.activePlaybackCount(), 1);
-  second.stop();
-  assert.equal((await second.ended).reason, "stopped");
+  assert.equal(context.startedSources[0].startedAt, context.startedSources[1].startedAt);
+  assert.equal(context.startedSources[1].playbackRate.value, 1.75);
+
+  context.startedSources[1].finish();
+  assert.equal((await second.ended).reason, "ended");
   assert.equal(speech.activePlaybackCount(), 0);
+});
+
+test("only the newest request may start when synthesis completes out of order", async () => {
+  const context = new FakeAudioContext();
+  const resolvers = new Map();
+  const speech = createTapTalkSpeech({
+    backend: {
+      async synthesize({ text }) {
+        return new Promise((resolve) => {
+          resolvers.set(text, resolve);
+        });
+      },
+    },
+    audioContext: context,
+    clock: { now: () => 1000 },
+  });
+
+  const first = speech.speak(request({ text: "first" }));
+  await Promise.resolve();
+  const second = speech.speak(
+    request({
+      requestId: "activation-2",
+      text: "second",
+      confirmedAtMs: 905,
+    }),
+  );
+  const outcomes = Promise.allSettled([first, second]);
+  for (let turn = 0; turn < 8 && resolvers.size < 2; turn += 1) {
+    await Promise.resolve();
+  }
+  assert.equal(resolvers.size, 2);
+
+  resolvers.get("first")(pcm());
+  resolvers.get("second")(pcm());
+  const [firstResult, secondResult] = await outcomes;
+
+  assert.equal(firstResult.status, "rejected");
+  assert.equal(firstResult.reason.code, "cancelled");
+  assert.equal(secondResult.status, "fulfilled");
+  assert.equal(context.startedSources.length, 1);
+  context.startedSources[0].finish();
+  await secondResult.value.ended;
 });
 
 test("estimated onset uses contact confirmation and output latency", async () => {

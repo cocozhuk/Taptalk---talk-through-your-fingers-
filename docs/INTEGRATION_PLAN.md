@@ -21,9 +21,9 @@ dependency, `@mediapipe/tasks-vision`, for local hand landmarks:
   camera inference on the device.
 
 The robotic-voice specialist may add a local synthesis model after proving
-overlapping, intelligible English and Mandarin playback. That choice must remain
-inside the voice adapter and must not change the application-facing interfaces
-below.
+immediate preemption plus intelligible natural-speed English and Mandarin
+playback. That choice must remain inside the voice adapter and must not change
+the application-facing interfaces below.
 
 ## Browser and deployment model
 
@@ -32,8 +32,12 @@ below.
 - Camera access uses `navigator.mediaDevices.getUserMedia` and therefore
   requires `localhost` or another secure context.
 - Frames remain attached to an in-page video element. The integration shell
-  does not upload, record, or persist frames.
-- Assignments and voice preferences use browser `localStorage`.
+  does not upload or persist them by default. An explicit recording session
+  uses a canvas capture stream for the mirrored camera and fingertip overlay,
+  combines it with user-approved current-tab audio, and saves the result
+  through `MediaRecorder` as a local download.
+- Assignments and fixed legacy routing compatibility values use browser
+  `localStorage`.
 - No server, account, analytics service, or network API is part of the
   prototype architecture.
 
@@ -58,7 +62,7 @@ configuration UI
 | Tracking | Produces one ordered event batch per analyzed video frame | Hand Tracking |
 | App state | Validates and persists configuration; suppresses stale/duplicate activations | App State and Storage |
 | UI | Renders camera, fingertip positions/states, editor, recovery and feedback | Interface Design |
-| Voice | Accepts independent `SpeechRequest` calls and reports audible onset/failure | Robotic Voices |
+| Voice | Accepts ordered `SpeechRequest` calls, preempts the active request for every newer tap, and reports audible onset/failure/interruption | Robotic Voices |
 | QA telemetry | Records confirmation-to-visual and confirmation-to-audible timing | QA, Accessibility and Privacy |
 | Composition | Creates adapters, connects ports, and owns development/build commands | Integration and Prototype |
 
@@ -107,11 +111,12 @@ For each accepted activation, the dispatcher synchronously publishes:
 ```
 
 Visual acknowledgement happens during this synchronous publication. A
-`SpeechRequest` is submitted only when no earlier request is active:
+`SpeechRequest` is then submitted without waiting for any earlier request:
 
 ```js
 {
   activationId: "camera-session:42:left_index",
+  fingerId: "left_index",
   text: "Thank you",
   language: "en",
   voiceId: "en_masculine",
@@ -121,14 +126,16 @@ Visual acknowledgement happens during this synchronous publication. A
 }
 ```
 
-The voice port method is `speak(request)`. App State admits the earliest
-request and discards later activations until it settles, so the voice port must
-not accumulate an additional hidden queue.
+The voice port methods are `speak(request)` and
+`interrupt({ fingerId, activationId, replacedByActivationId,
+replacementFingerId })`. Integration calls `interrupt` whenever a newer
+activation replaces unfinished playback, even when it comes from another
+finger. The port must not introduce a queue or resume interrupted speech.
 
 ### Configuration
 
-The persisted schema is versioned and contains exactly eight assignments plus
-one masculine/feminine preference for each supported language:
+The persisted schema remains versioned and contains exactly eight assignments.
+Version 1 retains fixed compatibility values for the removed preference fields:
 
 ```js
 {
@@ -143,9 +150,10 @@ one masculine/feminine preference for each supported language:
 }
 ```
 
-Loaders must reject malformed or incomplete stored data and return safe
-defaults. Reset removes the stored record. Webcam frames and tracking landmarks
-must never enter this schema.
+Dispatch ignores those compatibility fields and always routes English to
+`en_masculine` and Mandarin to `zh_feminine`. Loaders must reject malformed or
+incomplete stored data and return safe defaults. Reset removes the stored
+record. Webcam frames and tracking landmarks must never enter this schema.
 
 ## Deterministic dispatch
 
@@ -170,7 +178,8 @@ batch.
 ## End-to-end latency budget
 
 The product target is audible onset no later than 500 ms after tracking confirms
-contact under normal conditions.
+contact under normal conditions. Speech remains at natural `1×` speed and may
+be interrupted before completion by any newer tap.
 
 | Segment | Target | Measurement |
 |---|---:|---|
@@ -183,9 +192,9 @@ contact under normal conditions.
 
 Telemetry reports sample count, median, and 95th percentile separately for
 visual acknowledgement and audible onset. Browser Speech Synthesis does not
-provide portable guarantees for overlap or onset timing, so the initial
-fallback adapter is a wiring aid, not evidence that the voice acceptance
-criteria pass.
+provide portable guarantees for preemption or onset timing, so the
+initial fallback adapter is a wiring aid, not evidence that the voice
+acceptance criteria pass.
 
 ## Integration sequence
 
@@ -199,7 +208,7 @@ criteria pass.
 4. Completed for the first prototype: drive fingertip expression labels from
    normalized tracking positions and states.
 5. Replace browser speech fallback with the four-identity local robotic voice
-   adapter and verify first-wins playback without a stale backlog.
+   adapter and verify global newest-tap interruption without a stale queue.
 6. Execute the QA acceptance matrix, measure latency distributions on supported
    devices, and update release readiness.
 
@@ -211,8 +220,9 @@ criteria pass.
 - **Manual fallback:** static positions remain visible before the camera starts
   so the complete routing path can be tested without camera permission.
 - **Robotic voice production:** the browser speech adapter exposes only the four
-  TapTalk identities. The first-wins gate prevents browser queue buildup, but
-  the browser voices do not guarantee the intended robotic character.
+  TapTalk identities and implements the required newest-tap behavior through
+  the browser's global cancel operation. Browser engines still do not guarantee
+  the intended robotic character.
 - **Latency qualification:** instrumentation is wired, but acceptance requires
   real tracking and voice adapters plus device-level audible-onset measurement.
 - **Recovery/calibration polish:** basic camera errors and stop/start behavior

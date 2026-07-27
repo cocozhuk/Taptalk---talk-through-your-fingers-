@@ -34,11 +34,9 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 - Spoken languages are English and Mandarin Chinese only.
 - Each individual expression uses exactly one language. The eight finger
   assignments may contain a mixture of English and Mandarin expressions.
-- Exactly four voice identities:
+- Exactly two locked language voices:
   - English masculine
-  - English feminine
-  - Mandarin Chinese masculine
-  - Mandarin Chinese feminine
+  - Mandarin Chinese young-adult feminine
 - Voices must sound deliberately synthetic, mechanical, charming, and
   emotionally expressive.
 - Voice design may draw on broad warm/rough versus clean/bright robot
@@ -105,6 +103,8 @@ untracked
 - Contact requires at least 60 ms and two usable contact samples.
 - A finger becomes eligible initially and after activation only after at least
   120 ms and three usable separation samples.
+- Once separation is confirmed, no UI, dispatch, or audio-completion cooldown
+  delays the next activation.
 - A tracking gap over 100 ms disarms the affected finger. Reacquisition always
   requires confirmed separation before a new activation.
 - Detection must tolerate ordinary landmark jitter without producing repeated
@@ -114,14 +114,15 @@ untracked
 - Contact and release spatial thresholds must use hysteresis. Hand Tracking
   owns their calibrated values, not the event semantics or timing above.
 
-## Concurrent activations
+## Rapid activations
 
 - Confirmed activations are dispatched by confirmation timestamp, then capture
   frame sequence.
-- The earliest confirmed activation starts speech.
-- While that expression is speaking, later activations are discarded with
-  visual feedback. They are never queued for delayed playback.
-- A new activation may be accepted after the active expression ends or fails.
+- Speech uses one global newest-wins lane. Every new confirmed activation,
+  regardless of finger, interrupts unfinished playback and starts its
+  expression immediately.
+- Interrupted requests are not queued, resumed, or replayed.
+- Dispatch order still controls which activation is submitted first.
 - Contacts confirmed in the same frame use this tie-break:
   `left_index`, `left_middle`, `left_ring`, `left_pinky`, `right_index`,
   `right_middle`, `right_ring`, `right_pinky`.
@@ -131,37 +132,44 @@ untracked
 
 - The language of the assigned expression determines whether an English or
   Mandarin voice is used.
-- The prototype maintains one masculine/feminine preference for English and
-  one independent masculine/feminine preference for Mandarin.
-- These two preferences route to exactly `en_masculine`, `en_feminine`,
-  `zh_masculine`, and `zh_feminine`; there is no per-finger voice selection.
+- English always routes to `en_masculine`; Mandarin always routes to
+  `zh_feminine`.
+- There is no user-facing voice preference or per-finger voice selection.
 - An activation snapshots its saved text, language, and current compatible
   voice. Later edits affect only later activations.
-- At most one voice request is active. Busy-time activations are discarded,
-  not queued or replayed later.
+- At most one voice request plays at a time. The newest confirmed activation
+  preempts the previous request, regardless of finger.
 - Internal implementation may use a speech engine plus robotic audio
-  processing, but the user-facing interface must expose only the four TapTalk
-  identities.
+  processing, but the user-facing interface exposes no voice picker.
 
 ## Latency target
 
 - Under documented normal warmed conditions, p95 audible onset must be no more
   than 500 ms after confirmed contact.
+- Voices play at a natural `1×` rate. A newer activation may interrupt an
+  unfinished expression at any point; completion is not required before the
+  replacement starts.
 - The same distribution must meet p95 visual acknowledgement of 100 ms and p95
   speech-request dispatch of 50 ms.
 - Measurement begins at the capture time of the frame that confirms contact.
   Audio measurement ends at the first non-silent sample at the final
   application output graph, not when a speech API is called.
-- Tests must report sample count, p50, p95, maximum, and failures. Cold start,
-  permission, and recovery paths are reported separately.
+- Tests must report sample count, p50, p95, maximum, and failures, including
+  rapid preemption and intelligibility checks in English and Mandarin. Cold
+  start, permission, and recovery paths are reported separately.
 
 ## Privacy and storage
 
-- Finger assignments and voice preferences remain on the user's device.
+- Finger assignments and legacy routing compatibility fields remain on the
+  user's device.
 - Webcam frames should be processed locally for the first prototype.
 - Webcam frames must not be stored, uploaded, or retained by default.
+- Recording is an explicit user action available only while the camera is
+  active. The saved video must contain the mirrored camera, visible fingertip
+  markers and expression labels, and TapTalk speech audio. Stopping creates a
+  local browser download; TapTalk must not upload or retain a copy.
 - The user must receive a clear camera-permission explanation and a visible
-  indication when the camera is active.
+  indication when the camera or recorder is active.
 - Resetting TapTalk must provide a clear way to remove stored configuration.
 
 ## Recovery behavior
@@ -197,8 +205,8 @@ The first full prototype then expands the same path to:
 - two hands and all eight non-thumb fingers;
 - eight locally editable and persistent assignments;
 - English and Mandarin assignments across different fingers;
-- four fixed robotic voice identities;
-- overlapping playback;
+- one locked voice per language;
+- global newest-tap playback with no delayed queue;
 - deterministic first-confirmed-first-served dispatch;
 - fingertip-adjacent labels and contact feedback;
 - camera, tracking, validation, and recovery states;

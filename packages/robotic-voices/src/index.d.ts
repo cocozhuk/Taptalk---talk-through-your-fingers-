@@ -74,7 +74,7 @@ export interface PlaybackHandle {
   readonly ended: Promise<{
     readonly requestId: string;
     readonly identity: VoiceIdentityId;
-    readonly reason: "ended" | "stopped";
+    readonly reason: "ended" | "stopped" | "interrupted";
   }>;
   stop(): void;
 }
@@ -97,7 +97,7 @@ export type SpeechEvent =
       readonly type: "speech-ended";
       readonly requestId: string;
       readonly identity: VoiceIdentityId;
-      readonly reason: "ended" | "stopped";
+      readonly reason: "ended" | "stopped" | "interrupted";
     }
   | {
       readonly type: "speech-failed";
@@ -150,6 +150,8 @@ export function createTapTalkSpeech(options: {
   onEvent?: (event: SpeechEvent) => void;
   cacheOptions?: { maxBytes?: number; maxEntries?: number };
   startLeadSeconds?: number;
+  /** PCM playback speed. Defaults to 1.75 for rapid one-unit expressions. */
+  playbackRate?: number;
   latencyTracker?: LatencyTracker;
 }): {
   warmUp(preparations?: readonly SpeechPreparation[]): Promise<

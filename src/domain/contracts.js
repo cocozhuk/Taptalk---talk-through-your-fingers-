@@ -26,39 +26,42 @@ export const LANGUAGES = Object.freeze({
 });
 
 export const VOICE_IDENTITIES = Object.freeze({
-  en_masculine: Object.freeze({
-    id: "en_masculine",
+  en_shelley: Object.freeze({
+    id: "en_shelley",
     language: "en",
-    preference: "masculine",
-    name: "Bolt",
+    gender: "feminine",
+    name: "Shelley",
   }),
-  en_feminine: Object.freeze({
-    id: "en_feminine",
-    language: "en",
-    preference: "feminine",
-    name: "Lumen",
-  }),
-  zh_masculine: Object.freeze({
-    id: "zh_masculine",
+  zh_tingting: Object.freeze({
+    id: "zh_tingting",
     language: "zh",
-    preference: "masculine",
-    name: "Relay",
-  }),
-  zh_feminine: Object.freeze({
-    id: "zh_feminine",
-    language: "zh",
-    preference: "feminine",
-    name: "Pixel",
+    gender: "feminine",
+    name: "Tingting",
   }),
 });
+
+export const DEFAULT_VOICE_IDS = Object.freeze({
+  en: "en_shelley",
+  zh: "zh_tingting",
+});
+
+export const FIXED_VOICE_IDS = DEFAULT_VOICE_IDS;
 
 export function isFingerId(value) {
   return FINGER_IDS.includes(value);
 }
 
+export function fixedVoiceIdFor(language) {
+  const voiceId = DEFAULT_VOICE_IDS[language];
+  if (!voiceId) {
+    throw new TypeError(`Unsupported TapTalk language: ${language}`);
+  }
+  return voiceId;
+}
+
 export function voiceIdFor(language, preference) {
-  const voiceId = `${language}_${preference}`;
-  if (!Object.hasOwn(VOICE_IDENTITIES, voiceId)) {
+  const voiceId = DEFAULT_VOICE_IDS[language];
+  if (!voiceId) {
     throw new TypeError(`Unsupported TapTalk voice identity: ${voiceId}`);
   }
   return voiceId;
@@ -67,4 +70,3 @@ export function voiceIdFor(language, preference) {
 export function activationIdFor(event) {
   return `${event.sessionId}:${event.frameId}:${event.fingerId}`;
 }
-

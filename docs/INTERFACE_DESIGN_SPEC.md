@@ -30,15 +30,10 @@ so the user's physical left hand normally appears on the right side of the
 preview. Mirroring changes display coordinates only; it never changes a finger
 identifier, label, expression, event, or voice request.
 
-The interface exposes exactly these four voice identities:
-
-- English masculine
-- English feminine
-- Mandarin Chinese masculine
-- Mandarin Chinese feminine
-
-No system voice names, operating-system voice picker, custom voice upload, or
-additional identity is shown.
+The interface has two locked voice defaults: the original English masculine
+voice and one young-adult Mandarin Chinese feminine voice. No voice settings,
+system voice names, operating-system picker, custom voice upload, or additional
+identity is shown.
 
 ## Experience principles
 
@@ -50,6 +45,12 @@ additional identity is shown.
 - **One contact, one acknowledgement.** `confirmed` causes one visible and
   assistive-technology announcement. Repeated `held` snapshots do not retrigger
   it.
+- **Immediate rearm after a real release.** The interface adds no cooldown after
+  Hand Tracking confirms separation. The next confirmation for that finger is
+  accepted immediately.
+- **Every new tap restarts speech.** A new activation interrupts the phrase
+  currently playing and starts the new request immediately, regardless of
+  which finger produced either activation.
 - **Local and explicit.** Camera and on-device configuration explanations
   appear before permission and reset actions.
 - **Recover in place.** Loss of a hand, camera interruption, and audio failure
@@ -224,7 +225,8 @@ mode.
 - Instruction: `Touch this fingertip to the thumb on the same hand.`
 - On confirmation, the assigned expression is highlighted immediately.
 - While held: `Contact held — separate your finger and thumb to use it again.`
-- On confirmed separation: `Ready to use again.`
+- On confirmed separation: `Ready to use again.` The UI becomes ready on that
+  state update without an additional countdown or cooldown.
 - Primary action after one complete contact-and-separation cycle: `Start using
   TapTalk`.
 - Secondary action: `Skip practice`.
@@ -298,8 +300,10 @@ Live workspace requirements:
   `Selected` status strip.
 - Speech status is secondary to selection acknowledgement. Audio failure cannot
   undo or obscure a confirmed selection.
+- A newly confirmed activation is never blocked by an earlier animation,
+  announcement, or audio request from any finger.
 - Each simultaneously held contact retains its own state. A global animation
-  must not serialize or suppress overlapping activations.
+  must not serialize or suppress their visual activation feedback.
 
 ### 8. Expression editor
 
@@ -339,16 +343,13 @@ Editor behavior:
 - `Cancel` requests confirmation only when the draft differs from the supplied
   saved assignments.
 - A storage failure keeps the draft on screen and offers `Try saving again`.
-- Voice summaries link to the fixed voice settings; no per-finger voice control
-  is added.
+- Voice routing follows the assignment language; no voice settings or
+  per-finger voice control is added.
 
 ### 9. Settings, recalibration, and reset
 
 Settings contains only first-prototype controls:
 
-- English voice preference: masculine or feminine.
-- Mandarin Chinese voice preference: masculine or feminine.
-- `Preview` for each of the four identities.
 - `Recalibrate camera`.
 - Local-data explanation.
 - Destructive action: `Reset TapTalk`.
@@ -356,8 +357,8 @@ Settings contains only first-prototype controls:
 Reset confirmation:
 
 - Heading: `Reset TapTalk?`
-- Body: `This removes all eight expressions, both voice preferences, and
-  onboarding progress stored on this device. Camera frames are not stored.`
+- Body: `This removes all eight expressions and onboarding progress stored on
+  this device. Camera frames are not stored.`
 - Destructive action: `Remove local configuration`
 - Safe action: `Cancel`
 
@@ -415,9 +416,10 @@ finger IDs after this transform.
 5. Prefer the full expression. If space is constrained, wrap English only at
    word boundaries and Mandarin between characters, up to the expression's
    five-unit limit.
-6. When no current fingertip point exists, remove the overlay label and expose
-   `Not visible` in the semantic mapping list. Do not leave a label attached to
-   a stale frame.
+6. When no current fingertip point exists, immediately remove both the red
+   fingertip marker and its overlay label, then expose `Not visible` in the
+   semantic mapping list. Do not fade or leave either element attached to a
+   stale frame.
 
 The live preview includes a persistent, concise orientation note:
 `Mirrored view — labels use your physical left and right hands.`
@@ -440,6 +442,39 @@ state.
 The `confirmed` visual must not depend on audio status. Animation is optional,
 short, and disabled under reduced-motion preferences. The check/held shape and
 visible state text remain when animation is absent.
+
+## Rapid-repeat and audio-preemption contract
+
+Rapid repetition uses the existing contact and separation gesture; it does not
+add a new gesture:
+
+```text
+confirmed A -> held -> confirmed separation -> confirmed B
+```
+
+There is no Interface or App State cooldown between confirmed separation and
+the next contact candidate. Hand Tracking still owns the minimum evidence
+needed to confirm a genuine separation and prevent jitter from creating false
+repeats. A sustained touch remains `held` and produces no second activation.
+
+Robotic Voices and Integration should treat playback as one global newest-wins
+lane:
+
+- Every new activation interrupts unfinished playback and starts its phrase
+  immediately, regardless of the previous and new finger IDs.
+- The interrupted request is not resumed or queued.
+- At most one phrase continues playing.
+- Dispatch order remains the order supplied by App State. Interruption does not
+  alter activation timestamps or sequence numbers.
+
+For example, if `left_index` is assigned `slay`, three genuine taps may produce
+`s`, `s`, then `slay`: taps two and three cut off the preceding playback in the
+global lane, and the final request completes. Alternating between fingers
+behaves the same way: every newest expression cuts off the prior one. Exact
+audible cut points depend on tap cadence and speech startup latency.
+
+The UI acknowledges all three confirmed activations immediately. It does not
+wait for the earlier audio instance to report that it was interrupted.
 
 ## Language validation presentation
 
@@ -533,8 +568,6 @@ type ExpressionLanguage = "en" | "zh-CN";
 
 type VoiceId =
   | "en-masculine"
-  | "en-feminine"
-  | "zh-CN-masculine"
   | "zh-CN-feminine";
 
 type ContactVisualState =
@@ -613,7 +646,14 @@ interface ActivationPresentation {
   language: ExpressionLanguage;
   confirmedAtMonotonicMs: number;
   dispatchSequence: number;
-  audioState: "not_submitted" | "submitted" | "started" | "failed";
+  audioState:
+    | "not_submitted"
+    | "submitted"
+    | "started"
+    | "interrupted"
+    | "failed";
+  /** Present on an older request after any newer activation preempts it. */
+  interruptedByActivationId?: string;
 }
 
 interface CalibrationCheck {
@@ -630,7 +670,6 @@ interface InterfaceModel {
     | "camera_permission"
     | "calibration"
     | "expressions"
-    | "voices"
     | "practice"
     | "live"
     | "settings";
@@ -639,8 +678,6 @@ interface InterfaceModel {
   tracking?: TrackingPresentation;
   assignments: Readonly<Record<FingerId, ExpressionAssignment>>;
   drafts?: Readonly<Record<FingerId, AssignmentDraft>>;
-  englishVoicePreference: "en-masculine" | "en-feminine";
-  mandarinVoicePreference: "zh-CN-masculine" | "zh-CN-feminine";
   latestActivations: readonly ActivationPresentation[];
   calibrationChecks: readonly CalibrationCheck[];
   canContinueCalibration: boolean;
@@ -665,7 +702,6 @@ in development and test fixtures.
 | `SemanticMappingList` | assignments and finger states | select mapping for editing/practice | Tracking |
 | `LatestSelectionStatus` | activation events | None | Dispatch order or speech |
 | `ExpressionEditor` | eight drafts and save state | change draft, save full draft, cancel | Validation and persistence |
-| `VoicePreferences` | two selected IDs and preview states | set preference, preview voice | Voice catalogue or synthesis |
 | `RecoveryPanel` | normalized error state and supplied guidance | retry/reopen settings/reset request | Camera or storage recovery logic |
 | `ResetDialog` | open/pending/error | confirm reset, cancel | Data deletion |
 
@@ -688,12 +724,6 @@ type InterfaceIntent =
       type: "assignments.saveRequested";
       assignments: readonly ExpressionAssignment[];
     }
-  | {
-      type: "voice.preferenceChanged";
-      language: ExpressionLanguage;
-      voiceId: VoiceId;
-    }
-  | { type: "voice.previewRequested"; voiceId: VoiceId }
   | { type: "onboarding.practiceSkipped" }
   | { type: "onboarding.completed" }
   | { type: "configuration.resetRequested" }
@@ -706,15 +736,15 @@ Constraints on intent handling:
   validation codes.
 - The UI emits one complete save request; App State atomically accepts or
   rejects it and owns local persistence.
-- A voice preference intent is valid only when the `voiceId` language matches
-  the `language` field.
-- `voice.previewRequested` is not an activation and must not enter the contact
-  dispatch stream.
 - The UI never emits an activation based on pointer/touch interaction with a
   fingertip label.
 - The UI renders activation events in the supplied
   `(confirmedAtMonotonicMs, dispatchSequence)` order and never invents a
   simultaneous-contact tie-break.
+- A returned `separated` state unlocks the next activation immediately; the UI
+  has no debounce, animation lock, announcement lock, or audio-completion lock.
+- `audioState: "interrupted"` is informational. It must not replace the newest
+  selected-expression feedback with an error.
 
 ## Visual-system guidance
 
@@ -754,24 +784,29 @@ Integration can use this UI-level walkthrough with stubbed subsystem inputs:
    fingers. Verify all eight fixed rows and only two language choices.
 6. Feed every validation code for both languages. Verify inline bilingual
    feedback and accessible association.
-7. Verify the voice screen exposes exactly four identities and stores one
-   masculine/feminine preference per language.
+7. Verify no voice-choice section is rendered and English/Mandarin route to
+   their locked defaults.
 8. Enter the live screen with mirrored preview coordinates. Confirm
    `left_index` appears at the mirrored location but remains labeled
    `Left index`.
 9. Transition one finger through separated, approaching, candidate, confirmed,
    held, and separated. Verify exactly one selected announcement and no held
    retrigger.
-10. Deliver two activation events close together. Verify independent fingertip
-    acknowledgements, supplied dispatch order, and no UI-level audio
-    serialization.
-11. Remove and reacquire a hand. Verify stale labels disappear and the UI emits
+10. Assign one-unit expressions such as `slay` and `serve` to two fingers.
+    Deliver genuine contact/separation/contact cycles 500 ms apart. Verify
+    every confirmation renders, no UI cooldown is added, and both short words
+    are intelligible and finish inside their respective half-second beats.
+11. Activate a different finger while the rapid-repeat audio is playing. Verify
+    that the different-finger expression immediately interrupts and replaces
+    the current phrase. Repeat with a longer expression to verify it is cut off
+    rather than queued.
+12. Remove and reacquire a hand. Verify stale labels disappear and the UI emits
     no activation.
-12. Fail speech playback. Verify the selected expression remains visible and
+13. Fail speech playback. Verify the selected expression remains visible and
     the camera flow continues.
-13. Zoom text to 200%, enable reduced motion, navigate by keyboard, and inspect
+14. Zoom text to 200%, enable reduced motion, navigate by keyboard, and inspect
     the semantic mapping list with a screen reader.
-14. Confirm reset copy names all local configuration removed, then verify the
+15. Confirm reset copy names all local configuration removed, then verify the
     UI returns to Welcome only after reset success.
 
 ## Boundary verification
@@ -784,7 +819,7 @@ Integration can use this UI-level walkthrough with stubbed subsystem inputs:
 | One to five units | App State result rendered as `N/5`; invalid drafts cannot be saved |
 | English and Mandarin only | Editor offers only `en` and `zh-CN` |
 | One language per expression | Mixed-script errors; cross-finger mixing explicitly explained |
-| Exactly four voice identities | Fixed `VoiceId` union and two two-choice groups |
+| One locked voice per language | No voice controls; language alone determines routing |
 | Synthetic, non-character voices | User-facing names say robot; no protected character references |
 | No system voice catalogue | No engine/system picker contract |
 | No sign-language recognition | Welcome boundary copy |
@@ -792,9 +827,11 @@ Integration can use this UI-level walkthrough with stubbed subsystem inputs:
 | Configuration stays on device | Permission/settings/reset copy; persistence delegated locally |
 | Mirroring preserves semantics | One coordinate transform; IDs and semantic list never swap |
 | One sustained touch activates once | Announce only `confirmed`; `held` never retriggers |
-| Separation rearms | Held and rearmed copy follow tracking states |
+| Separation rearms | The first confirmed separation unlocks the next activation with no UI cooldown |
 | First-confirmed-first-served | UI consumes supplied timestamp and dispatch sequence |
-| Playback may overlap | Per-finger feedback has no global speech lock |
+| Global newest-tap playback | Every new activation interrupts the current phrase, regardless of finger; nothing queues |
+| Rapid same-finger repetition | Confirmed separation has no added UI/audio cooldown, and each new tap restarts speech |
+| Natural-speed rapid taps | Every newer tap interrupts unfinished 1× speech and starts the locked voice for its language |
 | Visible feedback precedes audio | Confirmation renders independently of audio state |
 | Camera frames local and not retained | Permission copy; interrupted view removes last frame |
 | Camera active is visible | Persistent text status in shell |
@@ -804,14 +841,15 @@ Integration can use this UI-level walkthrough with stubbed subsystem inputs:
 
 Assumptions used for this specification:
 
-- The current provisional per-language masculine/feminine preference model is
-  used for the first prototype.
+- English and Mandarin use their locked language voices with no user setting.
 - Ambiguous punctuation, digits, emoji, and script input is rejected and mapped
   to `unsupported_or_ambiguous`.
 - Hand Tracking can supply semantic IDs, conceptual states, unmirrored
   normalized fingertip coordinates, and palm centers.
 - Integration can provide a live stream handle without exposing stored frames
   to UI components.
+- Every voice request uses global newest-wins preemption, regardless of
+  semantic finger.
 
 Questions requiring Product Architecture or Integration resolution before
 interface freeze:
@@ -820,14 +858,16 @@ interface freeze:
    the resulting `dispatchSequence` to the UI.
 2. Confirm the final punctuation, digit, emoji, whitespace, and ambiguous-script
    policy and validation codes.
-3. Confirm whether per-language voice preference remains the final model.
-4. Define tracking confidence, confirmation, separation, and hand-loss recovery
-   timing; the UI will render supplied states.
-5. Provide product-approved starter expressions, if onboarding needs defaults.
+3. Define tracking confidence, confirmation, separation, and hand-loss recovery
+   timing. Separation confirmation should be as short as jitter tolerance
+   safely permits; the UI adds no further delay.
+4. Provide product-approved starter expressions, if onboarding needs defaults.
    The wireframes' example expressions must not become defaults accidentally.
-6. Confirm whether the first prototype localizes all interface chrome. This
+5. Confirm whether the first prototype localizes all interface chrome. This
    specification provides bilingual validation companions but does not add a
    third language setting beyond the two spoken-expression languages.
 
-No change to the Product Contract is requested by this interface
-specification.
+Product Architecture is asked to record the global newest-wins audio policy
+explicitly. It preserves the requirement that a true separation must occur
+before the same finger reactivates, while a confirmation from any other finger
+may interrupt the current phrase immediately.

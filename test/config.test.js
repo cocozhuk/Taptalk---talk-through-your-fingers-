@@ -4,6 +4,7 @@ import {
   ConfigRepository,
   STORAGE_KEY,
   createDefaultConfig,
+  detectExpressionLanguage,
   validateConfig,
   validateExpression,
 } from "../src/core/config.js";
@@ -43,6 +44,14 @@ test("Mandarin validation counts Han characters and rejects ambiguity", () => {
   assert.equal(validateExpression("你好！", "zh").valid, false);
 });
 
+test("detects English or Mandarin directly from expression text", () => {
+  assert.equal(detectExpressionLanguage("Thank you"), "en");
+  assert.equal(detectExpressionLanguage("谢谢"), "zh");
+  assert.equal(detectExpressionLanguage("hello 你好"), null);
+  assert.equal(detectExpressionLanguage("hello!"), null);
+  assert.equal(detectExpressionLanguage(""), null);
+});
+
 test("configuration contains exactly eight valid assignments", () => {
   const config = createDefaultConfig();
   assert.equal(validateConfig(config).valid, true);
@@ -66,6 +75,26 @@ test("repository persists valid local configuration and resets it", () => {
   assert.deepEqual(defaults, createDefaultConfig());
 });
 
+test("legacy voice preferences are ignored without losing saved assignments", () => {
+  const storage = new MemoryStorage();
+  const repository = new ConfigRepository(storage);
+  const legacy = createDefaultConfig();
+  legacy.assignments.left_index.text = "Still here";
+  legacy.voicePreferences = {
+    en: "feminine",
+    zh: "masculine",
+  };
+  storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+
+  const loaded = repository.load();
+
+  assert.equal(loaded.assignments.left_index.text, "Still here");
+  assert.deepEqual(loaded.voicePreferences, {
+    en: "masculine",
+    zh: "feminine",
+  });
+});
+
 test("repository recovers from malformed or invalid stored values", () => {
   const storage = new MemoryStorage();
   const repository = new ConfigRepository(storage);
@@ -76,4 +105,3 @@ test("repository recovers from malformed or invalid stored values", () => {
   storage.setItem(STORAGE_KEY, JSON.stringify({ version: 99 }));
   assert.deepEqual(repository.load(), createDefaultConfig());
 });
-

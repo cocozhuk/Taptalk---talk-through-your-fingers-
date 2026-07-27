@@ -272,6 +272,10 @@ For `rearm_required` and `held`, the separation dwell starts on the first
 finger's first usable observation is `separated`, that same sample may start,
 but can never by itself finish, the required separation dwell.
 
+Once the separation dwell passes, the finger is eligible immediately. UI
+animation, assistive announcements, dispatch state, and unfinished audio must
+not add another rearm delay.
+
 ### Tracking gaps and reacquisition
 
 - On the first `unusable` observation or missing expected frame, clear every
@@ -396,36 +400,25 @@ All activations from one frame must be sorted as a batch before dispatch.
 Mirroring, landmark array order, asynchronous callback order, and object-key
 order must never affect dispatch.
 
-Dispatch order selects the single earliest activation admitted to speech.
-While that request is active, later confirmations are consumed and reported as
-busy-time drops. They are not submitted to the voice subsystem and never play
-later from a backlog.
+Dispatch order controls reducer/effect submission order. Playback uses one
+global newest-wins lane: each later activation interrupts unfinished playback,
+regardless of finger, and starts immediately. No interrupted request is queued
+or resumed.
 
 ## 5. Activation snapshot and voice selection
 
-### Preferences
+### Locked language routing
 
-The final prototype selection model has exactly two saved preferences:
+The final prototype has no user-facing voice preferences:
 
-```text
-VoicePreferences {
-  en: "masculine" | "feminine"
-  zh: "masculine" | "feminine"
-}
-```
+| Assignment language | Voice ID |
+|---|---|
+| `en` | `en_masculine` |
+| `zh` | `zh_feminine` |
 
-They select exactly four user-facing TapTalk identities:
-
-| Assignment language | Preference | Voice ID |
-|---|---|---|
-| `en` | `masculine` | `en_masculine` |
-| `en` | `feminine` | `en_feminine` |
-| `zh` | `masculine` | `zh_masculine` |
-| `zh` | `feminine` | `zh_feminine` |
-
-There is no per-finger voice setting, automatic speaker-gender choice, or
-system-voice catalogue. Changing the English preference must not change the
-Mandarin preference, and vice versa.
+Legacy persisted preference fields may remain temporarily for schema
+compatibility, but dispatch ignores them. There is no per-finger voice setting
+or system-voice catalogue.
 
 ### Dispatch snapshot
 
@@ -453,10 +446,11 @@ request. Edits or preference changes after the snapshot affect only future
 activations. A speech backend must reject a language/voice mismatch rather than
 silently substitute another TapTalk identity.
 
-The earliest accepted activation submits one speech request. Until it ends or
-fails, later activations are discarded with visual feedback. An audio failure
-must not undo the visual activation or automatically replay stale speech; once
-the busy gate is released, the next deliberate activation may try again.
+Each accepted activation submits one speech request. Before submission, any
+unfinished request is interrupted regardless of its finger. The newest request
+starts immediately; the older request is not queued or resumed. An audio
+failure or interruption must not undo visual activation or automatically
+replay stale speech; the next deliberate activation may try again.
 
 The voice subsystem returns correlated telemetry:
 
@@ -486,6 +480,8 @@ All points use the shared monotonic clock:
 - `speechRequestedAtMs`: time the voice subsystem accepts the dispatch.
 - `audibleOnsetAtMs`: time the first non-silent sample for that activation
   begins at the application's final audio output graph.
+- `audibleCompletionAtMs`: time the final audible sample for a completed,
+  uninterrupted activation leaves the same output graph.
 
 Calling a speech API, decoding an asset, or scheduling an audio node is not
 audible onset. If an environment cannot expose output-graph onset, tests must
@@ -499,6 +495,7 @@ Per activation:
 visualLatencyMs = visualPresentedAtMs - confirmedAtMs
 speechDispatchLatencyMs = speechRequestedAtMs - confirmedAtMs
 audioOnsetLatencyMs = audibleOnsetAtMs - confirmedAtMs
+audioCompletionLatencyMs = audibleCompletionAtMs - confirmedAtMs
 ```
 
 Failed or cancelled speech is a failure outcome, not a latency of zero and not
@@ -511,6 +508,8 @@ Under normal warmed conditions:
 - visual latency p95 must be at most 100 ms;
 - speech dispatch latency p95 must be at most 50 ms;
 - audio onset latency p95 must be at most 500 ms.
+- speech plays at natural `1×` speed and remains immediately interruptible by
+  every newer activation.
 
 Normal warmed conditions mean the camera and tracker are running, camera and
 audio permissions are already resolved, the audio context is unlocked, needed
@@ -521,9 +520,9 @@ into the warmed distribution.
 
 For each path, QA must report sample count, p50, p95, maximum, and failure
 count, with at least 100 successful single-activation trials for the primary
-warmed result. Concurrent activations require a separate distribution with the
-same per-activation correlation. A best-case result alone is not evidence of
-acceptance.
+warmed result. Rapid preemption sequences require a separate distribution with
+the same per-activation correlation and must confirm intelligibility in both
+languages. A best-case result alone is not evidence of acceptance.
 
 Physical-contact-to-confirmation time is a separate tracking metric. It is not
 part of the 500 ms audio target, but Hand Tracking must report it so a long
@@ -542,7 +541,7 @@ dwell or processing delay cannot be hidden.
 | Stale or duplicate event | Reject it without visual or speech effects. |
 | Speech request fails before onset | Keep visual confirmation, expose a non-blocking audio error correlated to the activation, record failure telemetry, and do not auto-retry. |
 | Configuration fails schema or validation checks at load | Do not speak invalid data; use a complete valid factory configuration in memory, retain the bad stored value until the user explicitly resets or replaces it, and show a recovery notice. |
-| User confirms reset | Remove persisted assignments and voice preferences, load the complete factory configuration, and leave camera permission state unchanged. |
+| User confirms reset | Remove persisted assignments and legacy compatibility fields, load the complete factory configuration, and leave camera permission state unchanged. |
 
 Camera or tracking loss does not cancel speech that was already dispatched;
 that speech represents a previously confirmed deliberate activation. Reset may
@@ -550,8 +549,8 @@ cancel speech that has not reached audible onset when the backend supports
 correlated cancellation, but must not replay or substitute it.
 
 The prototype must ship a complete factory configuration containing eight
-valid assignments and two valid voice preferences so first run and recovery
-never create missing assignments. The exact factory expression copy is product
+valid assignments and the fixed language-routing compatibility values so first
+run and recovery never create missing assignments. The exact factory expression copy is product
 content, not an expansion of this behavioral contract; it must pass the same
 validator and be documented by Integration before release.
 
@@ -572,15 +571,16 @@ validator and be documented by Integration before release.
   `contact_candidate`, `held`, activation, camera, and audio-error feedback.
 - Keep invalid editor drafts separate from saved assignments.
 - Show stable validation messages for the codes in section 2.
-- Expose two language-specific masculine/feminine preferences representing
-  exactly four TapTalk identities.
+- Expose no voice preference controls; communicate the two locked
+  language-specific defaults where necessary.
 
 ### Robotic Voices
 
 - Accept `ActivationDispatch` speech fields and preserve the supplied
   language/voice pairing.
-- Deduplicate by `activationId`, keep at most one request active, and return
-  onset/failure telemetry correlated to that ID.
+- Deduplicate by `activationId`, preempt the one unfinished request before
+  starting every newer request, and return onset/failure/interruption telemetry
+  correlated to activation IDs.
 - Expose no additional identity or operating-system catalogue to the user.
 
 ### App State and Storage
@@ -608,7 +608,7 @@ validator and be documented by Integration before release.
   boundaries.
 - Provide a complete factory configuration, version it, and document its
   validated values.
-- Ensure one-frame activation batches are reduced deterministically and only
-  the earliest activation is admitted while speech is busy.
+- Ensure one-frame activation batches are reduced deterministically while
+  speech uses one global newest-wins lane without a delayed queue.
 - Record any unavoidable platform proxy or deviation as a contract-change
   request before calling the prototype accepted.

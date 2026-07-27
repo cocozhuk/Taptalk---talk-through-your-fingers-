@@ -1,66 +1,262 @@
-# TapTalk
+<div align="center">
+  <img src="assets/readme/taptalk-banner.svg" alt="TapTalk — talk through your fingers" width="100%" />
 
-TapTalk is an experimental, local-first webcam communication interface. It maps
-deliberate thumb-to-fingertip contacts to eight short spoken expressions in
-English or Mandarin Chinese.
+  <br />
 
-The current runnable integration scaffold includes:
+  [![First prototype](https://img.shields.io/badge/status-first_prototype-ff91c8?style=flat-square&labelColor=17264a)](#prototype-status)
+  [![Local first](https://img.shields.io/badge/privacy-local_first-a8dc34?style=flat-square&labelColor=17264a)](#privacy)
+  [![English + 中文](https://img.shields.io/badge/languages-English_%2B_中文-80d8f7?style=flat-square&labelColor=17264a)](#the-product-rules)
+  [![86 tests](https://img.shields.io/badge/tests-86_passing-a514ff?style=flat-square&labelColor=17264a)](#testing)
 
-- local webcam preview with explicit start/stop and camera-active feedback;
-- exactly eight editable assignments with local persistence and reset;
-- strict first-prototype English and Mandarin validation;
-- exactly four fixed TapTalk voice identities;
-- deterministic timestamp/finger-ID activation dispatch;
-- first-wins speech with no backlog: rapid taps are visibly discarded while
-  the earliest expression is speaking;
-- visual and audible-onset latency instrumentation;
-- on-device MediaPipe landmarks for up to two hands;
-- scale-normalized thumb-to-fingertip contact detection with separation rearm;
-- fingertip-adjacent expression labels driven by live landmark positions;
-- a press-and-hold manual fallback for development and camera-free testing.
+  **A camera-based communication interface that lets you talk through deliberate fingertip taps.**
 
-The first prototype now runs its camera and hand-landmark model locally. The
-four voice identities still use a browser-speech fallback in the integrated UI;
-the separate robotic-voice package proves concurrent PCM playback but still
-needs a licensed English/Mandarin synthesis model before it is production
-quality.
+  *Your hands become eight tiny, editable speech buttons.* ✦
+</div>
+
+---
+
+## What is TapTalk?
+
+TapTalk is an experimental communication interface for people who want—or
+need—to produce speech without using their natural voice, a keyboard, or a
+touchscreen.
+
+A webcam watches both hands locally. Each of the eight non-thumb fingers holds
+one short expression. Touch a fingertip to the thumb on the same hand and
+TapTalk displays that expression and speaks it aloud. Separate the finger to
+rearm it, then tap again whenever you are ready.
+
+```text
+webcam sees both hands
+        ↓
+fingertip touches its thumb
+        ↓
+assigned expression is selected
+        ↓
+the words appear + the voice speaks
+```
+
+TapTalk is a deliberately learned input system. It does **not** interpret sign
+language, translate arbitrary gestures, or guess what the user means. The user
+chooses the vocabulary; TapTalk makes each intentional contact visible and
+audible.
+
+## ✦ The first prototype
+
+This repository contains the complete first working prototype:
+
+- real-time local webcam preview;
+- on-device MediaPipe tracking for up to two hands;
+- eight editable fingertip assignments;
+- labels that follow the detected fingertips;
+- thumb-to-fingertip contact detection with separation rearming;
+- English and Mandarin language detection from the expression itself;
+- fixed **Shelley** English and **Tingting** Mandarin voices;
+- newest-tap-wins speech with no hidden audio queue;
+- local MP4 recording with fingertip labels and TapTalk speech included;
+- local configuration storage and reset;
+- camera-free mouse/touch and keyboard fallbacks;
+- a single-page, dreamy retro-tech interface.
+
+The red fingertip dots and electric blue, green, and violet labels are designed
+to stay legible over live video while keeping TapTalk playful and immediate.
+The sidebar groups the controls as **LEFT HAND 1–4** and **RIGHT HAND 1–4**.
+
+## How to use it
+
+1. Start the local server and open TapTalk.
+2. Select **Start camera** and allow camera access.
+3. Face one or both palms toward the camera with the wrist visible.
+4. Edit the eight expressions in the right sidebar and select **Save words**.
+5. Touch any non-thumb fingertip to the thumb on the same hand.
+6. Separate the finger before activating that same expression again.
+7. Select **Start recording** to save the mirrored video, fingertip labels, and
+   TapTalk speech together.
+
+When taps happen rapidly, TapTalk does not build a long speech queue. A new tap
+interrupts the current phrase and starts the newest one. This keeps the audio
+responsive and aligned with the user’s physical input.
+
+## The product rules
+
+These boundaries are intentional parts of TapTalk:
+
+| Rule | TapTalk behavior |
+| --- | --- |
+| Finger inputs | Exactly eight: four non-thumb fingers per hand |
+| Assignment | One editable expression per finger |
+| Expression length | Up to five English words or five Chinese characters |
+| Language per finger | One language inside each assignment |
+| Mixed setup | English and Chinese assignments can coexist across fingers |
+| Spoken languages | English and Mandarin Chinese only |
+| Default voices | Shelley for English, Tingting for Mandarin |
+| Rearming | A finger must separate from the thumb before activating again |
+| Simultaneous contacts | First confirmed contact is served first |
+| Target latency | Contact to speech within 500 ms |
+| Storage | Configuration remains on the device |
+| Interpretation | No sign-language recognition or arbitrary gesture guessing |
 
 ## Run locally
 
-Node.js 20 or newer is required.
+### Requirements
+
+- macOS for the exact Shelley and Tingting native voice pipeline;
+- Node.js 20 or newer;
+- a modern browser with webcam and `MediaRecorder` support;
+- a standard webcam.
+
+### Start TapTalk
 
 ```sh
+git clone git@github.com:cocozhuk/Taptalk---talk-through-your-fingers-.git
+cd Taptalk---talk-through-your-fingers-
 npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173`, start the camera, and hold both hands in view.
-Touch a non-thumb fingertip to the thumb on the same hand; separate them before
-using that finger again. Only the earliest tap speaks while audio is active;
-later rapid taps are discarded rather than queued. The marker and keyboard
-controls remain available as a camera-free fallback.
+Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
 
-## Verify
+TapTalk intentionally binds to `127.0.0.1`; the development server is not
+exposed to the local network.
+
+### Useful commands
 
 ```sh
-npm test
-npm run build
-# or both:
+npm run dev      # start the local TapTalk server
+npm test         # run the automated test suite
+npm run build    # assemble the static production files in dist/
+npm run check    # run tests, then build
+```
+
+## Interaction details
+
+### Fingertip tracking
+
+MediaPipe Hand Landmarker runs in the browser and supplies hand landmarks.
+TapTalk maps the index, middle, ring, and pinky fingertips on each hand to the
+eight assignments. Contact distances are normalized against palm scale so the
+same gesture works at different distances from the camera.
+
+Short confirmation and separation hysteresis reduce accidental triggers from
+landmark jitter. Losing a hand clears its contact state, so reacquiring a hand
+cannot silently trigger speech.
+
+### Speech
+
+The local development server synthesizes English and Mandarin audio with
+Apple’s AVFoundation voices:
+
+- **English:** Shelley
+- **Mandarin Chinese:** Tingting
+
+Generated audio is played through Web Audio. The same audio stream is also sent
+to the recorder, preventing the exported video from losing TapTalk’s speech.
+Speech is interruptible: the newest deliberate tap replaces anything currently
+playing.
+
+### Recording
+
+Recording is composed locally from:
+
+- the mirrored webcam image;
+- live fingertip dots and expression labels;
+- TapTalk’s generated speech audio;
+- compact recording captions.
+
+MP4 is preferred when the browser supports it. WebM remains a compatibility
+fallback. If a browser fails to deliver its final recorder event, TapTalk uses a
+bounded recovery path instead of leaving the interface stuck on “Saving…”.
+
+## Privacy
+
+TapTalk is local-first:
+
+- camera frames are processed on the device;
+- the hand-landmark model is bundled locally;
+- saved expressions use browser local storage;
+- speech is generated by the local development server;
+- recordings are downloaded directly by the browser;
+- nothing is uploaded by this prototype.
+
+Camera access is requested only after the user selects **Start camera**.
+Microphone access is not required because TapTalk records its own generated
+speech stream.
+
+## Project map
+
+```text
+TapTalk
+├── assets/
+│   ├── fonts/                 # bundled Gabarito typeface + license
+│   ├── models/                # local MediaPipe hand model
+│   └── readme/                # original project artwork
+├── docs/                      # product, architecture, QA, and agent briefs
+├── packages/robotic-voices/   # isolated interruptible speech experiments
+├── scripts/
+│   ├── build.mjs              # production assembly
+│   ├── serve.mjs              # local server + speech endpoint
+│   └── synthesize-speech.m    # AVFoundation speech helper
+├── src/
+│   ├── adapters/              # camera, hand model, speech, and recording
+│   ├── app-state/             # validation and local persistence contracts
+│   ├── core/                  # activation dispatch and configuration
+│   ├── hand-tracking/         # landmark contact state machine
+│   ├── ui/                    # interface rendering and feedback
+│   └── main.js                # prototype composition root
+└── test/                      # automated behavior and regression tests
+```
+
+The detailed product boundary is documented in
+[`docs/PRODUCT_CONTRACT.md`](docs/PRODUCT_CONTRACT.md). See
+[`docs/ARCHITECTURE_SPEC.md`](docs/ARCHITECTURE_SPEC.md) for the implementation
+contract and [`docs/qa/ACCEPTANCE_MATRIX.md`](docs/qa/ACCEPTANCE_MATRIX.md) for
+acceptance coverage.
+
+## Testing
+
+The current prototype has **86 passing automated tests** covering:
+
+- expression and configuration validation;
+- assignment persistence and migration;
+- first-confirmed activation ordering;
+- duplicate and stale event rejection;
+- contact hysteresis and separation rearming;
+- landmark mapping and visibility failure states;
+- fixed Shelley and Tingting voice routing;
+- interruptible rapid-tap speech;
+- recording audio inclusion and MP4 preference;
+- recorder finalization recovery;
+- fingertip overlay and tracking feedback.
+
+Run everything before a release:
+
+```sh
 npm run check
 ```
 
-The static production assembly is written to `dist/`.
+## Prototype status
 
-## Project contracts
+TapTalk is a first prototype, not a medical device or a finished accessibility
+product. It currently works best on macOS in good, even lighting with the palm
+and wrist clearly visible.
 
-The shared product rules live in
-[`docs/PRODUCT_CONTRACT.md`](docs/PRODUCT_CONTRACT.md), the prototype-ready
-behavior is specified in
-[`docs/ARCHITECTURE_SPEC.md`](docs/ARCHITECTURE_SPEC.md), and the runnable
-architecture and specialist ports are recorded in
-[`docs/INTEGRATION_PLAN.md`](docs/INTEGRATION_PLAN.md). Individual specialist
-responsibilities live in [`docs/agent-briefs`](docs/agent-briefs).
+Known areas for future exploration:
 
-No specialist may silently broaden TapTalk into sign-language recognition,
-arbitrary gesture interpretation, unrestricted text entry, or a general voice
-catalogue.
+- broader camera and browser testing;
+- improved tracking across occlusion and unusual hand angles;
+- user-adjustable contact sensitivity;
+- a licensed cross-platform synthetic voice backend;
+- accessibility studies with people who use alternative communication;
+- an installable offline application;
+- performance profiling on lower-power devices.
+
+The core vocabulary will stay intentionally compact: eight fingers, eight short
+expressions, English and Mandarin only.
+
+---
+
+<div align="center">
+  <strong>Tap. Separate. Speak. ✦</strong>
+  <br />
+  <sub>Designed as a tiny communication controller you already carry with you.</sub>
+</div>

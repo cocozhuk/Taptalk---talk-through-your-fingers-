@@ -1,12 +1,28 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
-import { extname, resolve, sep } from "node:path";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { extname, join, resolve, sep } from "node:path";
 import { createServer } from "node:http";
+import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const host = "127.0.0.1";
 const requestedPort = Number.parseInt(process.env.TAPTALK_PORT ?? "4173", 10);
 const port = Number.isSafeInteger(requestedPort) ? requestedPort : 4173;
+const speechCache = new Map();
+let nativeSynthesizerPromise = null;
+const speechProfiles = Object.freeze({
+  en_shelley: Object.freeze({
+    nativeVoiceIdentifier: "com.apple.eloquence.en-US.Shelley",
+    pitch: "1",
+    webRate: "1",
+  }),
+  zh_tingting: Object.freeze({
+    nativeVoiceIdentifier: "com.apple.voice.compact.zh-CN.Tingting",
+    pitch: "1",
+    webRate: "1",
+  }),
+});
 
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
@@ -19,6 +35,10 @@ const contentTypes = {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${host}:${port}`);
+  if (url.pathname === "/api/speech") {
+    await serveSpeech(url, response);
+    return;
+  }
   const pathname = decodeURIComponent(url.pathname);
   const filePath = resolvePublicPath(pathname);
 
@@ -85,4 +105,130 @@ function resolvePublicPath(pathname) {
     return null;
   }
   return candidate;
+}
+
+async function serveSpeech(url, response) {
+  const voiceId = url.searchParams.get("voiceId") ?? "";
+  const text = (url.searchParams.get("text") ?? "").trim();
+  if (!Object.hasOwn(speechProfiles, voiceId) || !text || text.length > 80) {
+    response.writeHead(400, {
+      "Content-Type": "text/plain; charset=utf-8",
+    });
+    response.end("Invalid TapTalk speech request");
+    return;
+  }
+
+  try {
+    const audio = await synthesizeSpeech(voiceId, text);
+    response.writeHead(200, {
+      "Cache-Control": "private, max-age=3600",
+      "Content-Length": audio.length,
+      "Content-Type": "audio/wav",
+      "X-Content-Type-Options": "nosniff",
+    });
+    response.end(audio);
+  } catch (error) {
+    console.error(`TapTalk speech synthesis failed: ${error.message}`);
+    response.writeHead(500, {
+      "Content-Type": "text/plain; charset=utf-8",
+    });
+    response.end("Local TapTalk speech synthesis failed");
+  }
+}
+
+function synthesizeSpeech(voiceId, text) {
+  const key = `${voiceId}\u0000${text}`;
+  let synthesis = speechCache.get(key);
+  if (synthesis) {
+    return synthesis;
+  }
+
+  synthesis = createSpeechAudio(voiceId, text).catch((error) => {
+    speechCache.delete(key);
+    throw error;
+  });
+  speechCache.set(key, synthesis);
+  if (speechCache.size > 64) {
+    speechCache.delete(speechCache.keys().next().value);
+  }
+  return synthesis;
+}
+
+async function createSpeechAudio(voiceId, text) {
+  const profile = speechProfiles[voiceId];
+  const temporaryDirectory = await mkdtemp(
+    join(tmpdir(), "taptalk-speech-"),
+  );
+  const intermediatePath = join(temporaryDirectory, "speech.caf");
+  const outputPath = join(temporaryDirectory, "speech.wav");
+  try {
+    if (profile.nativeVoiceIdentifier) {
+      const nativeSynthesizer = await ensureNativeSynthesizer();
+      await runProcess(nativeSynthesizer, [
+        intermediatePath,
+        profile.nativeVoiceIdentifier,
+        profile.pitch,
+        profile.webRate,
+        text,
+      ]);
+    } else {
+      await runProcess("/usr/bin/say", [
+        "-v",
+        profile.voice,
+        "-r",
+        profile.rate,
+        "-o",
+        intermediatePath,
+        `${profile.prefix}${text}`,
+      ]);
+    }
+    await runProcess("/usr/bin/afconvert", [
+      "-f",
+      "WAVE",
+      "-d",
+      "LEI16@24000",
+      intermediatePath,
+      outputPath,
+    ]);
+    return await readFile(outputPath);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+function ensureNativeSynthesizer() {
+  nativeSynthesizerPromise ??= (async () => {
+    const buildDirectory = await mkdtemp(
+      join(tmpdir(), "taptalk-native-speech-"),
+    );
+    const binaryPath = join(buildDirectory, "synthesize-speech");
+    await runProcess("/usr/bin/xcrun", [
+      "clang",
+      "-fobjc-arc",
+      "-fblocks",
+      "-framework",
+      "Foundation",
+      "-framework",
+      "AVFoundation",
+      resolve(projectRoot, "scripts/synthesize-speech.m"),
+      "-o",
+      binaryPath,
+    ]);
+    return binaryPath;
+  })();
+  return nativeSynthesizerPromise;
+}
+
+function runProcess(command, argumentsList) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const process = spawn(command, argumentsList, { stdio: "ignore" });
+    process.once("error", rejectPromise);
+    process.once("exit", (code) => {
+      if (code === 0) {
+        resolvePromise();
+      } else {
+        rejectPromise(new Error(`${command} exited with status ${code}`));
+      }
+    });
+  });
 }

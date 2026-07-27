@@ -1,38 +1,29 @@
 import {
   FINGER_IDS,
   FINGER_LABELS,
-  LANGUAGES,
-  VOICE_IDENTITIES,
 } from "../domain/contracts.js";
+import { detectExpressionLanguage } from "../core/config.js";
 
 const DEMO_POSITIONS = Object.freeze({
-  left_index: [66, 26],
-  left_middle: [73, 18],
-  left_ring: [81, 23],
-  left_pinky: [88, 32],
-  right_index: [34, 26],
-  right_middle: [27, 18],
-  right_ring: [19, 23],
-  right_pinky: [12, 32],
-});
-
-const CONTACT_STATE_LABELS = Object.freeze({
-  separated: "ready",
-  approaching: "getting closer",
-  contact_candidate: "contact — hold briefly",
-  activated: "activated",
-  held: "held — separate to rearm",
+  left_index: [34, 26],
+  left_middle: [27, 18],
+  left_ring: [19, 23],
+  left_pinky: [12, 32],
+  right_index: [66, 26],
+  right_middle: [73, 18],
+  right_ring: [81, 23],
+  right_pinky: [88, 32],
 });
 
 const FINGER_LABEL_COLORS = Object.freeze([
-  "#ff4ad8",
-  "#78ff38",
-  "#3467ff",
-  "#ffb21d",
-  "#44ddff",
-  "#bb72ff",
-  "#52ff9b",
-  "#ff6a45",
+  "#1637ff",
+  "#4be000",
+  "#a514ff",
+  "#1637ff",
+  "#4be000",
+  "#a514ff",
+  "#1637ff",
+  "#4be000",
 ]);
 
 const FINGERTIP_LANDMARK_INDEX = Object.freeze({
@@ -42,36 +33,56 @@ const FINGERTIP_LANDMARK_INDEX = Object.freeze({
   pinky: 20,
 });
 
+const FINGERTIP_PREVIOUS_LANDMARK_INDEX = Object.freeze({
+  index: 7,
+  middle: 11,
+  ring: 15,
+  pinky: 19,
+});
+
+export function projectToOuterTip(point, previousPoint, extension = 0.2) {
+  if (!isVisualPoint(point) || !isVisualPoint(previousPoint)) {
+    return point;
+  }
+  return {
+    ...point,
+    x: point.x + (point.x - previousPoint.x) * extension,
+    y: point.y + (point.y - previousPoint.y) * extension,
+  };
+}
+
+export function setLiveMarkerVisibility(marker, visible) {
+  const isVisible = Boolean(visible);
+  marker.hidden = !isVisible;
+  marker.classList.toggle("is-tracked", isVisible);
+  marker.style?.setProperty?.("display", isVisible ? "" : "none");
+}
+
 export class AppView {
   constructor(documentRef = document) {
     this.document = documentRef;
     this.elements = {
       assignmentList: documentRef.querySelector("#assignment-list"),
-      audioLatency: documentRef.querySelector("#audio-latency"),
       cameraIndicator: documentRef.querySelector("#camera-indicator"),
       cameraMessage: documentRef.querySelector("#camera-message"),
       cameraPlaceholder: documentRef.querySelector("#camera-placeholder"),
       cameraPreview: documentRef.querySelector("#camera-preview"),
       cameraToggle: documentRef.querySelector("#camera-toggle"),
-      englishVoice: documentRef.querySelector("#english-voice"),
-      expression: documentRef.querySelector("#activation-expression"),
-      expressionDetail: documentRef.querySelector("#activation-detail"),
       fingerOverlay: documentRef.querySelector("#finger-overlay"),
       form: documentRef.querySelector("#settings-form"),
-      latencySamples: documentRef.querySelector("#latency-samples"),
-      mandarinVoice: documentRef.querySelector("#mandarin-voice"),
       prototypeBadge: documentRef.querySelector("#prototype-badge"),
+      recordingCaption: documentRef.querySelector("#recording-caption"),
+      recordingIndicator: documentRef.querySelector("#recording-indicator"),
+      recordToggle: documentRef.querySelector("#record-toggle"),
       reset: documentRef.querySelector("#reset-settings"),
       settingsStatus: documentRef.querySelector("#settings-status"),
-      trackingNote: documentRef.querySelector("#tracking-note"),
-      visualLatency: documentRef.querySelector("#visual-latency"),
-      voiceTest: documentRef.querySelector("#voice-test"),
     };
 
     this.renderFingerMarkers();
     this.renderThumbMarkers();
     this.renderAssignmentFields();
-    this.contactMeterKey = "";
+    this.cameraState = "off";
+    this.recordingState = "idle";
   }
 
   renderFingerMarkers() {
@@ -114,8 +125,14 @@ export class AppView {
       const row = this.document.createElement("div");
       row.className = "assignment-row";
       row.dataset.assignment = fingerId;
+      const handFingerNumber = (index % 4) + 1;
+      const handLabel =
+        index === 0 ? "Left hand" : index === 4 ? "Right hand" : "";
       row.innerHTML = `
-        <div class="finger-number" aria-hidden="true">${index + 1}</div>
+        <div class="finger-number" aria-hidden="true">
+          ${handLabel ? `<span class="hand-number-label">${handLabel}</span>` : ""}
+          ${handFingerNumber}
+        </div>
         <label class="expression-field">
           <span>${FINGER_LABELS[fingerId]}</span>
           <input
@@ -126,13 +143,6 @@ export class AppView {
           />
           <small id="${fingerId}-error" data-error="${fingerId}"></small>
         </label>
-        <label class="language-field">
-          <span class="sr-only">Language for ${FINGER_LABELS[fingerId]}</span>
-          <select name="${fingerId}_language" data-language="${fingerId}">
-            <option value="en">${LANGUAGES.en}</option>
-            <option value="zh">${LANGUAGES.zh}</option>
-          </select>
-        </label>
       `;
       this.elements.assignmentList.append(row);
     }
@@ -142,8 +152,6 @@ export class AppView {
     for (const fingerId of FINGER_IDS) {
       this.expressionInput(fingerId).value =
         config.assignments[fingerId].text;
-      this.languageInput(fingerId).value =
-        config.assignments[fingerId].language;
       const marker = this.marker(fingerId);
       marker.querySelector(".marker-label").textContent =
         config.assignments[fingerId].text;
@@ -154,8 +162,6 @@ export class AppView {
       );
       this.setFieldError(fingerId, "");
     }
-    this.elements.englishVoice.value = config.voicePreferences.en;
-    this.elements.mandarinVoice.value = config.voicePreferences.zh;
   }
 
   readConfigDraft() {
@@ -166,26 +172,30 @@ export class AppView {
           fingerId,
           {
             text: this.expressionInput(fingerId).value,
-            language: this.languageInput(fingerId).value,
+            language:
+              detectExpressionLanguage(
+                this.expressionInput(fingerId).value,
+              ) ?? "",
           },
         ]),
       ),
       voicePreferences: {
-        en: this.elements.englishVoice.value,
-        zh: this.elements.mandarinVoice.value,
+        en: "masculine",
+        zh: "feminine",
       },
     };
   }
 
-  bind({ onCameraToggle, onVoiceTest, onSave, onReset }) {
+  bind({ onCameraToggle, onRecordingToggle, onSave, onReset }) {
     this.elements.cameraToggle.addEventListener("click", onCameraToggle);
-    this.elements.voiceTest.addEventListener("click", onVoiceTest);
+    this.elements.recordToggle.addEventListener("click", onRecordingToggle);
     this.elements.form.addEventListener("submit", onSave);
     this.elements.reset.addEventListener("click", onReset);
   }
 
   setCameraState(state, message) {
     const isActive = state === "active";
+    this.cameraState = state;
     this.elements.cameraIndicator.classList.toggle("is-on", isActive);
     this.elements.cameraIndicator.classList.toggle("is-off", !isActive);
     this.elements.cameraIndicator.lastElementChild.textContent = isActive
@@ -198,7 +208,40 @@ export class AppView {
       : "Start camera";
     this.elements.cameraToggle.disabled = state === "starting";
     this.elements.cameraPlaceholder.hidden = isActive;
+    this.elements.recordToggle.disabled =
+      this.recordingState === "saving" ||
+      (this.recordingState !== "recording" && !isActive);
     this.elements.cameraMessage.textContent = message;
+  }
+
+  setRecordingState(state, message = "") {
+    const isRecording = state === "recording";
+    this.recordingState = state;
+    this.elements.recordToggle.dataset.state = state;
+    this.elements.recordToggle.classList.toggle("is-recording", isRecording);
+    this.elements.recordToggle.setAttribute(
+      "aria-pressed",
+      String(isRecording),
+    );
+    this.elements.recordToggle.textContent =
+      state === "starting"
+        ? "Starting…"
+        : state === "saving"
+          ? "Saving…"
+          : isRecording
+            ? "Stop recording"
+            : "Start recording";
+    this.elements.recordToggle.disabled =
+      state === "starting" ||
+      state === "saving" ||
+      (!isRecording && this.cameraState !== "active");
+    this.elements.recordingIndicator.hidden = !isRecording;
+    this.elements.recordingCaption.textContent = isRecording
+      ? "Recording locally"
+      : "Not recording";
+    if (message) {
+      this.elements.cameraMessage.textContent = message;
+    }
   }
 
   applyTrackingEvent(event) {
@@ -225,8 +268,19 @@ export class AppView {
         snapshot?.state === "activated" || snapshot?.state === "held",
       );
       marker.dataset.trackingState = snapshot?.state ?? "not_visible";
+      if (
+        this.elements.fingerOverlay.classList.contains("is-live-tracking") &&
+        snapshot?.visible !== true
+      ) {
+        setLiveMarkerVisibility(marker, false);
+      }
     }
-    this.showContactMeter(snapshots);
+    if (
+      this.elements.fingerOverlay.classList.contains("is-live-tracking") &&
+      !snapshots.some((snapshot) => snapshot?.visible === true)
+    ) {
+      this.hideLiveMarkers();
+    }
   }
 
   applyHandLandmarks(hands) {
@@ -240,70 +294,94 @@ export class AppView {
         )
         .map((hand) => [hand.handedness, hand]),
     );
+    this.elements.fingerOverlay.dataset.trackedHands = String(byHand.size);
 
     for (const fingerId of FINGER_IDS) {
       const [handedness, fingerName] = fingerId.split("_");
       const hand = byHand.get(handedness);
       const point =
         hand?.landmarks?.[FINGERTIP_LANDMARK_INDEX[fingerName]];
+      const previousPoint =
+        hand?.landmarks?.[
+          FINGERTIP_PREVIOUS_LANDMARK_INDEX[fingerName]
+        ];
       const marker = this.marker(fingerId);
       const visible = isVisualPoint(point);
-      marker.classList.toggle("is-tracked", visible);
+      setLiveMarkerVisibility(marker, visible);
       if (visible) {
-        this.positionMarker(marker, point);
+        this.positionMarker(
+          marker,
+          projectToOuterTip(point, previousPoint),
+        );
       }
     }
 
     for (const hand of ["left", "right"]) {
       const point = byHand.get(hand)?.landmarks?.[4];
+      const previousPoint = byHand.get(hand)?.landmarks?.[3];
       const marker = this.thumbMarker(hand);
       const visible = isVisualPoint(point);
-      marker.classList.toggle("is-tracked", visible);
+      setLiveMarkerVisibility(marker, visible);
       if (visible) {
-        this.positionMarker(marker, point);
+        this.positionMarker(
+          marker,
+          projectToOuterTip(point, previousPoint),
+        );
       }
     }
   }
 
-  positionMarker(marker, point) {
-    marker.style.setProperty(
-      "--marker-x",
-      `${(1 - point.x) * 100}%`,
-    );
-    marker.style.setProperty("--marker-y", `${point.y * 100}%`);
+  hideLiveMarkers() {
+    if (!this.elements.fingerOverlay.classList.contains("is-live-tracking")) {
+      return;
+    }
+    this.elements.fingerOverlay.dataset.trackedHands = "0";
+    for (const fingerId of FINGER_IDS) {
+      const marker = this.marker(fingerId);
+      setLiveMarkerVisibility(marker, false);
+      marker.classList.remove("is-active");
+      marker.dataset.trackingState = "not_visible";
+    }
+    for (const hand of ["left", "right"]) {
+      const marker = this.thumbMarker(hand);
+      setLiveMarkerVisibility(marker, false);
+      marker.classList.remove("is-active");
+    }
   }
 
-  showContactMeter(snapshots) {
-    const closest = snapshots
-      .filter(
-        (snapshot) =>
-          snapshot.visible && Number.isFinite(snapshot.distanceRatio),
-      )
-      .sort(
-        (first, second) =>
-          first.distanceRatio - second.distanceRatio,
-      )[0];
-    if (!closest) {
-      return;
+  positionMarker(marker, point) {
+    const overlayWidth = this.elements.fingerOverlay.clientWidth;
+    const overlayHeight = this.elements.fingerOverlay.clientHeight;
+    const videoWidth = this.elements.cameraPreview?.videoWidth;
+    const videoHeight = this.elements.cameraPreview?.videoHeight;
+    let x = 1 - point.x;
+    let y = point.y;
+
+    // The camera uses object-fit: cover. Map MediaPipe's source-video
+    // coordinates through the same crop so dots stay on the visible tips.
+    if (
+      overlayWidth > 0 &&
+      overlayHeight > 0 &&
+      videoWidth > 0 &&
+      videoHeight > 0
+    ) {
+      const scale = Math.max(
+        overlayWidth / videoWidth,
+        overlayHeight / videoHeight,
+      );
+      const renderedWidth = videoWidth * scale;
+      const renderedHeight = videoHeight * scale;
+      const cropX = (renderedWidth - overlayWidth) / 2;
+      const cropY = (renderedHeight - overlayHeight) / 2;
+      x = ((1 - point.x) * renderedWidth - cropX) / overlayWidth;
+      y = (point.y * renderedHeight - cropY) / overlayHeight;
     }
 
-    const roundedGap = Math.round(closest.distanceRatio * 20) / 20;
-    const stateLabel =
-      CONTACT_STATE_LABELS[closest.state] ?? "waiting for separation";
-    const key = `${closest.fingerId}:${roundedGap}:${stateLabel}`;
-    if (key === this.contactMeterKey) {
-      return;
-    }
-    this.contactMeterKey = key;
-
-    const heading = this.document.createElement("strong");
-    heading.textContent = "Contact meter: ";
-    this.elements.trackingNote.replaceChildren(
-      heading,
-      this.document.createTextNode(
-        `${FINGER_LABELS[closest.fingerId]} · ${stateLabel} · gap ${roundedGap.toFixed(2)}.`,
-      ),
+    marker.style.setProperty(
+      "--marker-x",
+      `${x * 100}%`,
     );
+    marker.style.setProperty("--marker-y", `${y * 100}%`);
   }
 
   setTrackingMode(mode) {
@@ -315,40 +393,36 @@ export class AppView {
     this.elements.prototypeBadge.lastChild.textContent = live
       ? " Live hand tracking"
       : " Manual fallback ready";
-    this.elements.trackingNote.innerHTML = live
-      ? "<strong>Live tracking:</strong> touch a fingertip to the thumb on the same hand. Separate them before using that finger again."
-      : "<strong>Manual fallback:</strong> start the camera for local hand landmarks, or press and hold a marker or keys 1–8; release to rearm.";
 
-    if (!live) {
-      for (const [fingerId, [x, y]] of Object.entries(DEMO_POSITIONS)) {
-        const marker = this.marker(fingerId);
-        marker.classList.remove("is-tracked", "is-active");
-        marker.dataset.trackingState = "not_visible";
-        marker.style.setProperty("--marker-x", `${x}%`);
-        marker.style.setProperty("--marker-y", `${y}%`);
-      }
-      for (const hand of ["left", "right"]) {
-        this.thumbMarker(hand).classList.remove(
-          "is-tracked",
-          "is-active",
-        );
-      }
+    if (live) {
+      this.hideLiveMarkers();
+      return;
+    }
+
+    delete this.elements.fingerOverlay.dataset.trackedHands;
+    for (const [fingerId, [x, y]] of Object.entries(DEMO_POSITIONS)) {
+      const marker = this.marker(fingerId);
+      marker.hidden = false;
+      marker.style.removeProperty("display");
+      marker.classList.remove("is-tracked", "is-active");
+      marker.dataset.trackingState = "not_visible";
+      marker.style.setProperty("--marker-x", `${x}%`);
+      marker.style.setProperty("--marker-y", `${y}%`);
+    }
+    for (const hand of ["left", "right"]) {
+      const marker = this.thumbMarker(hand);
+      marker.hidden = true;
+      marker.classList.remove(
+        "is-tracked",
+        "is-active",
+      );
     }
   }
 
-  setVoiceTestState(state, message) {
-    const busy = state === "testing" || state === "playing";
-    this.elements.voiceTest.disabled = busy;
-    this.elements.voiceTest.textContent =
-      state === "testing"
-        ? "Starting voice…"
-        : state === "playing"
-          ? "Voice playing…"
-          : "Test voice";
-    this.elements.cameraMessage.textContent = message;
-  }
-
   showTrackingStatus({ phase, detectedHands, trackedHands }) {
+    if (this.recordingState && this.recordingState !== "idle") {
+      return;
+    }
     if (phase === "ready") {
       this.elements.cameraMessage.textContent =
         "Hand model ready. Hold one full hand inside the frame.";
@@ -358,11 +432,14 @@ export class AppView {
       return;
     }
     if (trackedHands > 0) {
+      this.elements.fingerOverlay.dataset.trackedHands =
+        String(trackedHands);
       const noun = trackedHands === 1 ? "hand" : "hands";
       this.elements.cameraMessage.textContent =
         `${trackedHands} ${noun} tracked locally. Touch a fingertip to its thumb to speak.`;
       return;
     }
+    this.hideLiveMarkers();
     if (detectedHands > 0) {
       this.elements.cameraMessage.textContent =
         "Hand landmarks were found, but their left/right label was unavailable. Keep the palm fully visible and try again.";
@@ -372,46 +449,36 @@ export class AppView {
       "0 hands detected. Show the full palm and wrist, face the palm toward the camera, and use even lighting.";
   }
 
-  showActivation(activation) {
-    const identity = VOICE_IDENTITIES[activation.voiceId];
-    this.elements.expression.textContent = activation.expression;
-    this.elements.expressionDetail.textContent =
-      `${FINGER_LABELS[activation.fingerId]} · ${identity.name} · ${LANGUAGES[activation.language]}`;
-  }
-
   showSpeechPending(activation) {
-    this.elements.voiceTest.disabled = true;
+    if (this.recordingState === "error") {
+      return;
+    }
     this.elements.cameraMessage.textContent =
       `Contact detected: “${activation.expression}”. Starting voice…`;
   }
 
+  showSpeechRestarted(activation) {
+    if (this.recordingState === "error") {
+      return;
+    }
+    this.elements.cameraMessage.textContent =
+      `New tap detected. Cutting off the previous phrase and starting “${activation.expression}”…`;
+  }
+
   showSpeechStarted(activation) {
+    if (this.recordingState === "error") {
+      return;
+    }
     this.elements.cameraMessage.textContent =
       `Voice started: “${activation.expression}”. Separate the finger to rearm it.`;
   }
 
   showSpeechError(activation, error) {
-    this.elements.voiceTest.disabled = false;
+    if (this.recordingState === "error") {
+      return;
+    }
     this.elements.cameraMessage.textContent =
       `Contact detected for “${activation.expression}”, but audio failed: ${error.message}`;
-  }
-
-  showSpeechBusy(activeActivation, ignoredAssignment) {
-    this.elements.cameraMessage.textContent =
-      `Speaking “${activeActivation.expression}”. Ignored rapid tap for “${ignoredAssignment.text}” — nothing was queued.`;
-  }
-
-  showSpeechReady(activation) {
-    this.elements.voiceTest.disabled = false;
-    this.elements.cameraMessage.textContent =
-      `Finished “${activation.expression}”. Ready for the next tap.`;
-  }
-
-  showLatency(visual, audio) {
-    this.elements.visualLatency.textContent = formatLatency(visual.p50Ms);
-    this.elements.audioLatency.textContent = formatLatency(audio.p50Ms);
-    this.elements.latencySamples.textContent =
-      `${visual.count} visual / ${audio.count} audible samples · p95 ${formatLatency(audio.p95Ms)}`;
   }
 
   showValidationErrors(errors) {
@@ -428,12 +495,6 @@ export class AppView {
   expressionInput(fingerId) {
     return this.elements.assignmentList.querySelector(
       `[data-expression="${fingerId}"]`,
-    );
-  }
-
-  languageInput(fingerId) {
-    return this.elements.assignmentList.querySelector(
-      `[data-language="${fingerId}"]`,
     );
   }
 
@@ -457,10 +518,6 @@ export class AppView {
     input.setAttribute("aria-invalid", String(Boolean(message)));
     error.textContent = message;
   }
-}
-
-function formatLatency(value) {
-  return value === null ? "—" : `${Math.round(value)} ms`;
 }
 
 function isVisualPoint(point) {

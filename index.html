@@ -14,30 +14,25 @@
     <div class="app-shell">
       <header class="masthead">
         <a class="brand" href="#main-content" aria-label="TapTalk home">
-          <span class="brand-mark" aria-hidden="true">T</span>
-          <span>
-            <strong>TapTalk</strong>
-            <small>Local integration prototype</small>
-          </span>
+          <strong>TapTalk</strong>
         </a>
-        <div id="prototype-badge" class="prototype-badge">
-          <span class="status-dot" aria-hidden="true"></span>
-          On-device hand tracking
+        <div class="header-status">
+          <span class="privacy-summary"
+            >Camera and recordings stay on this device</span
+          >
+          <div id="prototype-badge" class="prototype-badge">
+            <span class="status-dot" aria-hidden="true"></span>
+            On-device
+          </div>
         </div>
       </header>
-
-      <section class="privacy-note" aria-label="Camera privacy">
-        <strong>Private by design.</strong>
-        Camera frames stay in this browser tab and are never recorded or
-        uploaded. Assignments are stored only on this device.
-      </section>
 
       <main id="main-content" class="workspace">
         <section class="live-panel" aria-labelledby="live-title">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Live input</p>
-              <h1 id="live-title">Touch a fingertip</h1>
+              <p class="eyebrow">Live camera</p>
+              <h1 id="live-title">Touch a fingertip to speak</h1>
             </div>
             <div id="camera-indicator" class="camera-indicator is-off">
               <span aria-hidden="true"></span>
@@ -64,109 +59,62 @@
               class="finger-overlay"
               aria-label="Fingertip expression labels and manual fallback controls"
             ></div>
+            <div
+              id="recording-indicator"
+              class="recording-indicator"
+              role="status"
+              hidden
+            >
+              <span aria-hidden="true"></span>
+              Recording locally
+            </div>
             <div class="stage-caption">
               <span>Mirrored preview</span>
-              <span>Frames are not stored</span>
+              <span id="recording-caption">Not recording</span>
             </div>
           </div>
 
           <div class="camera-controls">
             <div class="camera-actions">
-              <button id="camera-toggle" class="primary-button" type="button">
+              <button
+                id="camera-toggle"
+                class="secondary-button camera-button"
+                type="button"
+              >
                 Start camera
               </button>
-              <button id="voice-test" class="secondary-button" type="button">
-                Test voice
+              <button
+                id="record-toggle"
+                class="primary-button record-button"
+                type="button"
+                aria-pressed="false"
+                disabled
+              >
+                Start recording
               </button>
             </div>
             <p id="camera-message" class="camera-message" role="status">
               Camera permission is requested only after you start it.
             </p>
           </div>
-
-          <div class="test-harness-note">
-            <span class="note-icon" aria-hidden="true">i</span>
-            <p id="tracking-note">
-              <strong>Tracking ready:</strong> start the camera for local hand
-              landmarks. Before the camera starts, press and hold a marker or
-              keys 1–8 to test a contact; release to rearm.
-            </p>
-          </div>
-
-          <div class="feedback-grid">
-            <article class="activation-card">
-              <p class="eyebrow">Last activation</p>
-              <p id="activation-expression" class="activation-expression">
-                Waiting for contact
-              </p>
-              <p id="activation-detail" class="activation-detail">
-                Start the camera or use any of the eight markers
-              </p>
-            </article>
-            <article class="latency-card">
-              <p class="eyebrow">Measured latency</p>
-              <dl>
-                <div>
-                  <dt>Visual p50</dt>
-                  <dd id="visual-latency">—</dd>
-                </div>
-                <div>
-                  <dt>Audio p50</dt>
-                  <dd id="audio-latency">—</dd>
-                </div>
-              </dl>
-              <p id="latency-samples">No measured samples yet</p>
-            </article>
-          </div>
         </section>
 
         <aside class="settings-panel" aria-labelledby="settings-title">
           <div class="section-heading settings-heading">
             <div>
-              <p class="eyebrow">Assignments</p>
-              <h2 id="settings-title">Your eight expressions</h2>
+              <h2 id="settings-title">Fingertip words</h2>
+              <p class="auto-language-note">
+                Language detected automatically
+              </p>
             </div>
-            <span class="local-chip">On-device</span>
           </div>
 
           <form id="settings-form" novalidate>
             <div id="assignment-list" class="assignment-list"></div>
 
-            <fieldset class="voice-fieldset">
-              <legend>Fixed voice identities</legend>
-              <p>
-                Choose one of two TapTalk identities for each language. No
-                system voice catalogue is exposed.
-              </p>
-              <div class="voice-grid">
-                <label>
-                  <span>English voice</span>
-                  <select id="english-voice" name="englishVoice">
-                    <option value="masculine">
-                      English masculine · Bolt
-                    </option>
-                    <option value="feminine">
-                      English feminine · Lumen
-                    </option>
-                  </select>
-                </label>
-                <label>
-                  <span>Mandarin voice</span>
-                  <select id="mandarin-voice" name="mandarinVoice">
-                    <option value="masculine">
-                      Mandarin masculine · Relay
-                    </option>
-                    <option value="feminine">
-                      Mandarin feminine · Pixel
-                    </option>
-                  </select>
-                </label>
-              </div>
-            </fieldset>
-
             <div class="form-actions">
-              <button class="primary-button" type="submit">
-                Save assignments
+              <button class="primary-button save-button" type="submit">
+                Save words
               </button>
               <button id="reset-settings" class="text-button" type="button">
                 Reset local data

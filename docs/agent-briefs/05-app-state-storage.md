@@ -9,10 +9,12 @@ finger assignments, visual feedback, and speech playback.
 
 - Define and store the eight assignments.
 - Classify and validate English and Mandarin expressions.
-- Store English and Mandarin voice preferences locally.
+- Retain fixed English-masculine and Mandarin-feminine compatibility values
+  locally until the configuration schema is migrated.
 - Route contact events to expression, UI, and voice actions.
 - Order simultaneous activations deterministically.
-- Permit overlapping speech requests.
+- Dispatch every confirmed speech request in order so Integration can apply
+  global newest-wins preemption.
 - Prevent duplicates and stale tracking events.
 - Implement reset and safe configuration migration.
 
@@ -28,4 +30,3 @@ finger assignments, visual feedback, and speech playback.
 Specify the state model, event reducer or equivalent deterministic logic,
 persistence schema, validation rules, and subsystem interfaces; then implement
 the minimal local core needed by the proof of concept.
-
