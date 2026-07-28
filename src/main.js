@@ -3,6 +3,7 @@ import { BrowserRecorder } from "./adapters/browser-recorder.js";
 import { CapturableWebSpeechVoicePort } from "./adapters/capturable-web-speech-voice.js";
 import { ManualContactTracker } from "./adapters/manual-contact-tracker.js";
 import { MediaPipeHandTracker } from "./adapters/mediapipe-hand-tracker.js";
+import { TabAudioCapture } from "./adapters/tab-audio-capture.js";
 import { ActivationDispatcher } from "./core/activation-dispatcher.js";
 import {
   ConfigRepository,
@@ -16,6 +17,7 @@ const repository = new ConfigRepository(window.localStorage);
 const camera = new BrowserCamera();
 const recorder = new BrowserRecorder();
 const voicePort = new CapturableWebSpeechVoicePort();
+const tabAudioCapture = new TabAudioCapture();
 
 let config = repository.load();
 let cameraActive = false;
@@ -27,9 +29,10 @@ view.setRecordingState("idle");
 const warmVoiceAssignments = () => {
   void voicePort.warmAssignments(config.assignments).catch((error) => {
     view.setSettingsStatus(
-      `Local speech preparation failed: ${error.message}`,
-      "error",
+      "Hosted recording mode is ready. When recording, choose This Tab and enable Share tab audio.",
+      "success",
     );
+    console.info("Local recording speech is unavailable:", error);
   });
 };
 
@@ -84,6 +87,8 @@ const stopRecordingAndSave = async () => {
     recordingActive = false;
     view.setRecordingState("error", error.message);
     return null;
+  } finally {
+    tabAudioCapture.stop();
   }
 };
 
@@ -114,25 +119,34 @@ view.bind({
       await stopRecordingAndSave();
       return;
     }
+    const useTabAudio = !voicePort.hasPreparedRecordingAudio;
     view.setRecordingState(
       "starting",
-      "Starting local MP4 recording with TapTalk speech audio.",
+      useTabAudio
+        ? "Choose This Tab and enable Share tab audio in the recording window."
+        : "Starting local MP4 recording with TapTalk speech audio.",
     );
     try {
+      const audioStream = useTabAudio
+        ? await tabAudioCapture.start()
+        : voicePort.recordingStream;
       const recording = await recorder.start({
         cameraStream: camera.stream,
-        audioStream: voicePort.recordingStream,
+        audioStream,
         videoElement: view.elements.cameraPreview,
         overlayElement: view.elements.fingerOverlay,
       });
       recordingActive = true;
       view.setRecordingState(
         "recording",
-        `Recording the mirrored camera, fingertip labels, and TapTalk speech locally as ${
+        `Recording the mirrored camera, fingertip labels, and TapTalk speech${
+          useTabAudio ? " from the shared tab" : ""
+        } locally as ${
           recording.mimeType.includes("mp4") ? "MP4" : "WebM"
         }.`,
       );
     } catch (error) {
+      tabAudioCapture.stop();
       view.setRecordingState("error", error.message);
     }
   },
@@ -227,6 +241,7 @@ window.addEventListener("pagehide", () => {
   if (recordingActive) {
     void recorder.stop();
   }
+  tabAudioCapture.stop();
   voicePort.destroy();
   camera.stop(view.elements.cameraPreview);
 });

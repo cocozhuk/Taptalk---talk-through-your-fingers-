@@ -39,6 +39,9 @@ test("browser speech remains authoritative while capture audio stays silent", as
     recordingVoice,
   });
 
+  assert.equal(port.hasPreparedRecordingAudio, false);
+  await port.warmAssignments([]);
+  assert.equal(port.hasPreparedRecordingAudio, true);
   assert.deepEqual(await port.speak(request()), { status: "ended" });
   assert.deepEqual(calls, ["capture", "browser"]);
   assert.equal(recordingVoice.connectToSpeakers, false);
@@ -70,4 +73,31 @@ test("local output remains audible only when browser speech is unavailable", asy
   assert.deepEqual(await port.speak(request()), { status: "ended" });
   assert.deepEqual(calls, ["local"]);
   assert.equal(recordingVoice.connectToSpeakers, true);
+});
+
+test("failed recording speech preparation enables the hosted fallback", async () => {
+  const liveVoice = {
+    speechSynthesis: {},
+    Utterance: function Utterance() {},
+    interrupt: () => false,
+  };
+  const recordingVoice = {
+    connectToSpeakers: false,
+    recordingStream: { id: "capture" },
+    warmAssignments: async () => {
+      throw new Error("Local endpoint unavailable");
+    },
+    interrupt: () => false,
+    destroy() {},
+  };
+  const port = new CapturableWebSpeechVoicePort({
+    liveVoice,
+    recordingVoice,
+  });
+
+  await assert.rejects(
+    port.warmAssignments([]),
+    /Local endpoint unavailable/,
+  );
+  assert.equal(port.hasPreparedRecordingAudio, false);
 });
