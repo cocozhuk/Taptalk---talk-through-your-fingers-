@@ -1,8 +1,8 @@
 import { BrowserCamera } from "./adapters/browser-camera.js";
 import { BrowserRecorder } from "./adapters/browser-recorder.js";
-import { CapturableWebSpeechVoicePort } from "./adapters/capturable-web-speech-voice.js";
 import { ManualContactTracker } from "./adapters/manual-contact-tracker.js";
 import { MediaPipeHandTracker } from "./adapters/mediapipe-hand-tracker.js";
+import { PiperVoicePort } from "./adapters/piper-voice.js";
 import { ActivationDispatcher } from "./core/activation-dispatcher.js";
 import {
   ConfigRepository,
@@ -10,12 +10,33 @@ import {
   validateConfig,
 } from "./core/config.js";
 import { AppView } from "./ui/app-view.js";
+import {
+  remove as removePiperVoice,
+  TtsSession,
+} from "/vendor/piper/piper-tts-web.js";
 
 const view = new AppView();
 const repository = new ConfigRepository(window.localStorage);
 const camera = new BrowserCamera();
 const recorder = new BrowserRecorder();
-const voicePort = new CapturableWebSpeechVoicePort();
+const supportNotice = document.querySelector("#support-notice");
+const supportNoticeDismiss = document.querySelector(
+  "#support-notice-dismiss",
+);
+const supportNoticeStorageKey = "taptalk.support-notice.v1";
+const voicePort = new PiperVoicePort({
+  TtsSession,
+  removeVoice: removePiperVoice,
+  onProgress: ({ modelId, percent }) => {
+    const language = modelId.startsWith("zh_") ? "Mandarin" : "English";
+    view.setSettingsStatus(
+      percent === null
+        ? `Downloading the approved ${language} voice…`
+        : `Downloading the approved ${language} voice… ${percent}%`,
+      "success",
+    );
+  },
+});
 
 let config = repository.load();
 let cameraActive = false;
@@ -24,13 +45,62 @@ view.renderConfig(config);
 view.setTrackingMode("manual");
 view.setRecordingState("idle");
 
+const showFirstVisitSupportNotice = () => {
+  if (!supportNotice || !supportNoticeDismiss) {
+    return;
+  }
+
+  let noticeDismissed = false;
+  try {
+    noticeDismissed =
+      window.localStorage.getItem(supportNoticeStorageKey) === "dismissed";
+  } catch {
+    // The notice can still be shown when browser storage is unavailable.
+  }
+
+  if (noticeDismissed) {
+    return;
+  }
+
+  supportNotice.showModal();
+  supportNoticeDismiss.addEventListener(
+    "click",
+    () => {
+      try {
+        window.localStorage.setItem(
+          supportNoticeStorageKey,
+          "dismissed",
+        );
+      } catch {
+        // Closing the notice should never depend on browser storage.
+      }
+      supportNotice.close();
+    },
+    { once: true },
+  );
+};
+
+showFirstVisitSupportNotice();
+
 const warmVoiceAssignments = () => {
-  void voicePort.warmAssignments(config.assignments).catch((error) => {
-    view.setSettingsStatus(
-      `Local speech preparation failed: ${error.message}`,
-      "error",
-    );
-  });
+  view.setSettingsStatus(
+    "Preparing the two approved Piper voices locally…",
+    "success",
+  );
+  void voicePort
+    .warmAssignments(config.assignments)
+    .then(() => {
+      view.setSettingsStatus(
+        "Piper English and Mandarin voices are ready.",
+        "success",
+      );
+    })
+    .catch((error) => {
+      view.setSettingsStatus(
+        `Local Piper speech preparation failed: ${error.message}`,
+        "error",
+      );
+    });
 };
 
 const dispatcher = new ActivationDispatcher({
@@ -84,6 +154,8 @@ const stopRecordingAndSave = async () => {
     recordingActive = false;
     view.setRecordingState("error", error.message);
     return null;
+  } finally {
+    voicePort.finishRecording();
   }
 };
 
@@ -119,6 +191,7 @@ view.bind({
       "Starting local MP4 recording with TapTalk speech audio.",
     );
     try {
+      await voicePort.prepareRecording();
       const recording = await recorder.start({
         cameraStream: camera.stream,
         audioStream: voicePort.recordingStream,
@@ -133,6 +206,7 @@ view.bind({
         }.`,
       );
     } catch (error) {
+      voicePort.finishRecording();
       view.setRecordingState("error", error.message);
     }
   },

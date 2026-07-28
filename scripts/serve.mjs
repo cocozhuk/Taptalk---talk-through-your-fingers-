@@ -29,6 +29,7 @@ const contentTypes = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
+  ".data": "application/octet-stream",
   ".task": "application/octet-stream",
   ".wasm": "application/wasm",
 };
@@ -54,9 +55,11 @@ const server = createServer(async (request, response) => {
     response.writeHead(200, {
       "Cache-Control": "no-store",
       "Content-Security-Policy":
-        "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'",
+        "default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' 'nonce-taptalk-local-voice-lab'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://huggingface.co https://*.hf.co; worker-src 'self' blob:; frame-ancestors 'none'",
       "Content-Type":
         contentTypes[extname(filePath)] ?? "application/octet-stream",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+      "Cross-Origin-Opener-Policy": "same-origin",
       "Permissions-Policy": "camera=(self), microphone=()",
       "Referrer-Policy": "no-referrer",
       "X-Content-Type-Options": "nosniff",
@@ -75,6 +78,9 @@ function resolvePublicPath(pathname) {
   if (pathname === "/" || pathname === "/index.html") {
     return resolve(projectRoot, "index.html");
   }
+  if (pathname === "/voice-lab.html") {
+    return resolve(projectRoot, "voice-lab.html");
+  }
 
   const routes = [
     {
@@ -91,6 +97,24 @@ function resolvePublicPath(pathname) {
         projectRoot,
         "node_modules/@mediapipe/tasks-vision",
       ),
+    },
+    {
+      prefix: "/vendor/piper/",
+      root: resolve(
+        projectRoot,
+        "node_modules/@mintplex-labs/piper-tts-web/dist",
+      ),
+    },
+    {
+      prefix: "/vendor/piper-wasm/",
+      root: resolve(
+        projectRoot,
+        "node_modules/@diffusionstudio/piper-wasm/build",
+      ),
+    },
+    {
+      prefix: "/vendor/onnxruntime/",
+      root: resolve(projectRoot, "node_modules/onnxruntime-web/dist"),
     },
   ];
 
