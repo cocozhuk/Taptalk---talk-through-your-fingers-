@@ -1,3 +1,4 @@
+import { inject } from "@vercel/analytics";
 import { BrowserCamera } from "./adapters/browser-camera.js";
 import { BrowserRecorder } from "./adapters/browser-recorder.js";
 import { CapturableWebSpeechVoicePort } from "./adapters/capturable-web-speech-voice.js";
@@ -11,6 +12,9 @@ import {
   validateConfig,
 } from "./core/config.js";
 import { AppView } from "./ui/app-view.js";
+
+// Initialize Vercel Web Analytics
+inject();
 
 const view = new AppView();
 const repository = new ConfigRepository(window.localStorage);
