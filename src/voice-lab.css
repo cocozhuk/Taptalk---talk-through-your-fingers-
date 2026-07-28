@@ -1,0 +1,120 @@
+@font-face {
+  font-family: "Gabarito";
+  src: url("../assets/fonts/Gabarito-Variable.woff2") format("woff2");
+}
+
+:root {
+  font-family: "Gabarito", sans-serif;
+  color: #22233a;
+  background: #fff8e8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 15% 15%, #bcecff 0 12%, transparent 32%),
+    radial-gradient(circle at 90% 85%, #ffc8df 0 12%, transparent 32%),
+    #fff8e8;
+}
+
+.voice-lab {
+  width: min(680px, calc(100% - 32px));
+  padding: 36px;
+  border: 2px solid #22233a;
+  border-radius: 28px;
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 8px 8px 0 #22233a;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #ee4b88;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 3.8rem);
+  line-height: 0.95;
+}
+
+.intro,
+.status {
+  line-height: 1.5;
+}
+
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 28px 0;
+}
+
+button {
+  min-height: 132px;
+  padding: 20px;
+  border: 2px solid #22233a;
+  border-radius: 22px;
+  color: #22233a;
+  background: #bcecff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button:last-child {
+  background: #ffc8df;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+button span,
+button strong {
+  display: block;
+}
+
+button span {
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+button strong {
+  font-size: 1.2rem;
+}
+
+.status {
+  min-height: 24px;
+  font-weight: 700;
+}
+
+a {
+  color: inherit;
+  font-weight: 800;
+}
+
+@media (max-width: 560px) {
+  .voice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-lab {
+    padding: 24px;
+  }
+}

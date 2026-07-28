@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TapTalk voice test</title>
+    <link rel="stylesheet" href="./src/voice-lab.css" />
+    <script type="importmap" nonce="taptalk-local-voice-lab">
+      {
+        "imports": {
+          "onnxruntime-web": "/vendor/onnxruntime/esm/ort.min.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main class="voice-lab">
+      <p class="eyebrow">Local prototype</p>
+      <h1>Choose the two TapTalk voices</h1>
+      <p class="intro">
+        The first test downloads and caches each 63 MB voice model. Speech is
+        generated inside this browser.
+      </p>
+
+      <div class="voice-grid">
+        <button type="button" data-voice="english">
+          <span>English prototype</span>
+          <strong>Test “Hello, thank you”</strong>
+        </button>
+        <button type="button" data-voice="mandarin">
+          <span>Mandarin prototype</span>
+          <strong>Test “你好，谢谢”</strong>
+        </button>
+      </div>
+
+      <p id="voice-status" class="status" role="status">
+        Choose either voice to begin.
+      </p>
+      <a href="/">Back to TapTalk</a>
+    </main>
+
+    <script type="module" src="./src/voice-lab.js?v=2"></script>
+  </body>
+</html>

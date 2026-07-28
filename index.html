@@ -9,6 +9,13 @@
     />
     <title>TapTalk prototype</title>
     <link rel="stylesheet" href="./src/styles.css" />
+    <script type="importmap" nonce="taptalk-local-voice-lab">
+      {
+        "imports": {
+          "onnxruntime-web": "/vendor/onnxruntime/esm/ort.min.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <div class="app-shell">
@@ -126,6 +133,60 @@
       </main>
     </div>
 
-    <script type="module" src="./src/main.js"></script>
+    <dialog
+      id="support-notice"
+      class="support-notice"
+      aria-labelledby="support-notice-title"
+      aria-describedby="support-notice-description support-notice-description-zh"
+    >
+      <div class="support-notice-art" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <p class="support-notice-kicker">Prototype note · 原型提示</p>
+      <h2 id="support-notice-title">
+        TapTalk currently works best on Chrome for macOS
+      </h2>
+      <div class="support-notice-copy">
+        <p id="support-notice-description">
+          This prototype is currently fully supported on
+          <strong>Google Chrome for macOS</strong>. Other browsers and Windows
+          may not support local voices or recording yet.
+        </p>
+        <p id="support-notice-description-zh" lang="zh-CN">
+          TapTalk
+          原型目前仅在<strong>macOS 版 Google Chrome</strong>上获得完整支持。其他浏览器及
+          Windows 暂时可能不支持本地语音或录制功能。
+        </p>
+      </div>
+      <div class="support-notice-repo">
+        <p>
+          Want to run TapTalk on your own Mac? Get the project on GitHub and
+          follow the README. If you enjoy it, a star would mean a lot ♡
+        </p>
+        <p lang="zh-CN">
+          想在自己的 Mac 上部署 TapTalk？前往 GitHub
+          获取项目并按照 README 操作。如果你喜欢 TapTalk，欢迎点个 Star 支持一下 ♡
+        </p>
+      </div>
+      <div class="support-notice-actions">
+        <a
+          class="secondary-button support-notice-link"
+          href="https://github.com/cocozhuk/Taptalk---talk-through-your-fingers-"
+          target="_blank"
+          rel="noreferrer"
+        >
+          View GitHub · 查看 GitHub
+        </a>
+        <button
+          id="support-notice-dismiss"
+          class="primary-button"
+          type="button"
+        >
+          Got it · 知道了
+        </button>
+      </div>
+    </dialog>
+
+    <script type="module" src="./src/main.js?v=piper-1"></script>
   </body>
 </html>

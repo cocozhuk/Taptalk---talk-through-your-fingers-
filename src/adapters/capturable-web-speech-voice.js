@@ -16,26 +16,14 @@ export class CapturableWebSpeechVoicePort {
     if (!this.usesBrowserSpeech) {
       this.recordingVoice.connectToSpeakers = true;
     }
-    this.recordingAudioReady = false;
   }
 
   get recordingStream() {
     return this.recordingVoice.recordingStream;
   }
 
-  get hasPreparedRecordingAudio() {
-    return this.recordingAudioReady;
-  }
-
-  async warmAssignments(assignments) {
-    this.recordingAudioReady = false;
-    try {
-      await this.recordingVoice.warmAssignments(assignments);
-      this.recordingAudioReady = true;
-    } catch (error) {
-      this.recordingAudioReady = false;
-      throw error;
-    }
+  warmAssignments(assignments) {
+    return this.recordingVoice.warmAssignments(assignments);
   }
 
   speak(request) {

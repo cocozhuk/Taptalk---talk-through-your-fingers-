@@ -1,10 +1,9 @@
 import { inject } from "@vercel/analytics";
 import { BrowserCamera } from "./adapters/browser-camera.js";
 import { BrowserRecorder } from "./adapters/browser-recorder.js";
-import { CapturableWebSpeechVoicePort } from "./adapters/capturable-web-speech-voice.js";
 import { ManualContactTracker } from "./adapters/manual-contact-tracker.js";
 import { MediaPipeHandTracker } from "./adapters/mediapipe-hand-tracker.js";
-import { TabAudioCapture } from "./adapters/tab-audio-capture.js";
+import { PiperVoicePort } from "./adapters/piper-voice.js";
 import { ActivationDispatcher } from "./core/activation-dispatcher.js";
 import {
   ConfigRepository,
@@ -12,6 +11,10 @@ import {
   validateConfig,
 } from "./core/config.js";
 import { AppView } from "./ui/app-view.js";
+import {
+  remove as removePiperVoice,
+  TtsSession,
+} from "/vendor/piper/piper-tts-web.js";
 
 // Initialize Vercel Web Analytics
 inject();
@@ -20,8 +23,24 @@ const view = new AppView();
 const repository = new ConfigRepository(window.localStorage);
 const camera = new BrowserCamera();
 const recorder = new BrowserRecorder();
-const voicePort = new CapturableWebSpeechVoicePort();
-const tabAudioCapture = new TabAudioCapture();
+const supportNotice = document.querySelector("#support-notice");
+const supportNoticeDismiss = document.querySelector(
+  "#support-notice-dismiss",
+);
+const supportNoticeStorageKey = "taptalk.support-notice.v1";
+const voicePort = new PiperVoicePort({
+  TtsSession,
+  removeVoice: removePiperVoice,
+  onProgress: ({ modelId, percent }) => {
+    const language = modelId.startsWith("zh_") ? "Mandarin" : "English";
+    view.setSettingsStatus(
+      percent === null
+        ? `Downloading the approved ${language} voice…`
+        : `Downloading the approved ${language} voice… ${percent}%`,
+      "success",
+    );
+  },
+});
 
 let config = repository.load();
 let cameraActive = false;
@@ -30,14 +49,62 @@ view.renderConfig(config);
 view.setTrackingMode("manual");
 view.setRecordingState("idle");
 
+const showFirstVisitSupportNotice = () => {
+  if (!supportNotice || !supportNoticeDismiss) {
+    return;
+  }
+
+  let noticeDismissed = false;
+  try {
+    noticeDismissed =
+      window.localStorage.getItem(supportNoticeStorageKey) === "dismissed";
+  } catch {
+    // The notice can still be shown when browser storage is unavailable.
+  }
+
+  if (noticeDismissed) {
+    return;
+  }
+
+  supportNotice.showModal();
+  supportNoticeDismiss.addEventListener(
+    "click",
+    () => {
+      try {
+        window.localStorage.setItem(
+          supportNoticeStorageKey,
+          "dismissed",
+        );
+      } catch {
+        // Closing the notice should never depend on browser storage.
+      }
+      supportNotice.close();
+    },
+    { once: true },
+  );
+};
+
+showFirstVisitSupportNotice();
+
 const warmVoiceAssignments = () => {
-  void voicePort.warmAssignments(config.assignments).catch((error) => {
-    view.setSettingsStatus(
-      "Hosted recording mode is ready. When recording, choose This Tab and enable Share tab audio.",
-      "success",
-    );
-    console.info("Local recording speech is unavailable:", error);
-  });
+  view.setSettingsStatus(
+    "Preparing the two approved Piper voices locally…",
+    "success",
+  );
+  void voicePort
+    .warmAssignments(config.assignments)
+    .then(() => {
+      view.setSettingsStatus(
+        "Piper English and Mandarin voices are ready.",
+        "success",
+      );
+    })
+    .catch((error) => {
+      view.setSettingsStatus(
+        `Local Piper speech preparation failed: ${error.message}`,
+        "error",
+      );
+    });
 };
 
 const dispatcher = new ActivationDispatcher({
@@ -92,7 +159,7 @@ const stopRecordingAndSave = async () => {
     view.setRecordingState("error", error.message);
     return null;
   } finally {
-    tabAudioCapture.stop();
+    voicePort.finishRecording();
   }
 };
 
@@ -123,34 +190,27 @@ view.bind({
       await stopRecordingAndSave();
       return;
     }
-    const useTabAudio = !voicePort.hasPreparedRecordingAudio;
     view.setRecordingState(
       "starting",
-      useTabAudio
-        ? "Choose This Tab and enable Share tab audio in the recording window."
-        : "Starting local MP4 recording with TapTalk speech audio.",
+      "Starting local MP4 recording with TapTalk speech audio.",
     );
     try {
-      const audioStream = useTabAudio
-        ? await tabAudioCapture.start()
-        : voicePort.recordingStream;
+      await voicePort.prepareRecording();
       const recording = await recorder.start({
         cameraStream: camera.stream,
-        audioStream,
+        audioStream: voicePort.recordingStream,
         videoElement: view.elements.cameraPreview,
         overlayElement: view.elements.fingerOverlay,
       });
       recordingActive = true;
       view.setRecordingState(
         "recording",
-        `Recording the mirrored camera, fingertip labels, and TapTalk speech${
-          useTabAudio ? " from the shared tab" : ""
-        } locally as ${
+        `Recording the mirrored camera, fingertip labels, and TapTalk speech locally as ${
           recording.mimeType.includes("mp4") ? "MP4" : "WebM"
         }.`,
       );
     } catch (error) {
-      tabAudioCapture.stop();
+      voicePort.finishRecording();
       view.setRecordingState("error", error.message);
     }
   },
@@ -245,7 +305,6 @@ window.addEventListener("pagehide", () => {
   if (recordingActive) {
     void recorder.stop();
   }
-  tabAudioCapture.stop();
   voicePort.destroy();
   camera.stop(view.elements.cameraPreview);
 });
