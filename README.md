@@ -6,7 +6,7 @@
   [![First prototype](https://img.shields.io/badge/status-first_prototype-ff91c8?style=flat-square&labelColor=17264a)](#prototype-status)
   [![Local first](https://img.shields.io/badge/privacy-local_first-a8dc34?style=flat-square&labelColor=17264a)](#privacy)
   [![English + 中文](https://img.shields.io/badge/languages-English_%2B_中文-80d8f7?style=flat-square&labelColor=17264a)](#the-product-rules)
-  [![90 tests](https://img.shields.io/badge/tests-90_passing-a514ff?style=flat-square&labelColor=17264a)](#testing)
+  [![93 tests](https://img.shields.io/badge/tests-93_passing-a514ff?style=flat-square&labelColor=17264a)](#testing)
 
   **A camera-based communication interface that lets you talk through deliberate fingertip taps.**
 
@@ -192,7 +192,7 @@ TapTalk
 │   ├── models/                # local MediaPipe hand model
 │   └── readme/                # original project artwork
 ├── docs/                      # product, architecture, QA, and agent briefs
-├── packages/robotic-voices/   # isolated interruptible speech experiments
+├── packages/robotic-voices/   # archived four-voice speech experiment
 ├── scripts/
 │   ├── build.mjs              # production assembly
 │   ├── patch-piper.mjs        # browser Piper compatibility patch
@@ -215,7 +215,7 @@ acceptance coverage.
 
 ## Testing
 
-The current prototype has **90 passing automated tests** covering:
+The current prototype has **93 passing automated tests** covering:
 
 - expression and configuration validation;
 - assignment persistence and migration;

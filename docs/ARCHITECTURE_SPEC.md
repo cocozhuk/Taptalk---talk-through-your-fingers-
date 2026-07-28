@@ -409,12 +409,13 @@ or resumed.
 
 ### Locked language routing
 
-The final prototype has no user-facing voice preferences:
+The final prototype has no user-facing voice preferences. Its two active Piper
+models are fixed by expression language:
 
-| Assignment language | Voice ID |
+| Assignment language | Piper model ID |
 |---|---|
-| `en` | `en_masculine` |
-| `zh` | `zh_feminine` |
+| `en` | `en_US-hfc_female-medium` |
+| `zh` | `zh_CN-huayan-medium` |
 
 Legacy persisted preference fields may remain temporarily for schema
 compatibility, but dispatch ignores them. There is no per-finger voice setting
@@ -435,8 +436,6 @@ ActivationDispatch {
   language: "en" | "zh"
   voiceId:
     | "en_masculine"
-    | "en_feminine"
-    | "zh_masculine"
     | "zh_feminine"
 }
 ```
@@ -445,6 +444,10 @@ The same snapshot drives immediate visual acknowledgement and the speech
 request. Edits or preference changes after the snapshot affect only future
 activations. A speech backend must reject a language/voice mismatch rather than
 silently substitute another TapTalk identity.
+
+The compatibility IDs in the dispatch snapshot map only to the two Piper model
+IDs above. The unused feminine-English and masculine-Mandarin compatibility
+values are not active product voices and never appear in the interface.
 
 Each accepted activation submits one speech request. Before submission, any
 unfinished request is interrupted regardless of its finger. The newest request

@@ -150,10 +150,11 @@ Version 1 retains fixed compatibility values for the removed preference fields:
 }
 ```
 
-Dispatch ignores those compatibility fields and always routes English to
-`en_masculine` and Mandarin to `zh_feminine`. Loaders must reject malformed or
-incomplete stored data and return safe defaults. Reset removes the stored
-record. Webcam frames and tracking landmarks must never enter this schema.
+Dispatch ignores those compatibility fields. The active speech adapter maps
+English to `en_US-hfc_female-medium` and Mandarin to
+`zh_CN-huayan-medium`. Loaders must reject malformed or incomplete stored data
+and return safe defaults. Reset removes the stored record. Webcam frames and
+tracking landmarks must never enter this schema.
 
 ## Deterministic dispatch
 
@@ -191,10 +192,10 @@ be interrupted before completion by any newer tap.
 | Total audible onset | 500 ms | confirmed timestamp to `onAudibleStart` |
 
 Telemetry reports sample count, median, and 95th percentile separately for
-visual acknowledgement and audible onset. Browser Speech Synthesis does not
-provide portable guarantees for preemption or onset timing, so the
-initial fallback adapter is a wiring aid, not evidence that the voice
-acceptance criteria pass.
+visual acknowledgement and audible onset. The active prototype uses local
+Piper synthesis and routes its Web Audio output to both the speakers and the
+recorder. Browser Speech Synthesis adapters remain only as inactive historical
+fallback experiments.
 
 ## Integration sequence
 
@@ -207,8 +208,9 @@ acceptance criteria pass.
    fallback.
 4. Completed for the first prototype: drive fingertip expression labels from
    normalized tracking positions and states.
-5. Replace browser speech fallback with the four-identity local robotic voice
-   adapter and verify global newest-tap interruption without a stale queue.
+5. Completed for the first prototype: replace browser speech with two fixed
+   local Piper models and verify global newest-tap interruption without a stale
+   queue.
 6. Execute the QA acceptance matrix, measure latency distributions on supported
    devices, and update release readiness.
 
@@ -219,10 +221,10 @@ acceptance criteria pass.
   variation, and supported-device performance still require physical testing.
 - **Manual fallback:** static positions remain visible before the camera starts
   so the complete routing path can be tested without camera permission.
-- **Robotic voice production:** the browser speech adapter exposes only the four
-  TapTalk identities and implements the required newest-tap behavior through
-  the browser's global cancel operation. Browser engines still do not guarantee
-  the intended robotic character.
+- **Robotic voice production:** the active app exposes no picker and uses only
+  `en_US-hfc_female-medium` for English and `zh_CN-huayan-medium` for Mandarin.
+  First use requires both model downloads; warm-path latency and voice
+  intelligibility still require device-level qualification.
 - **Latency qualification:** instrumentation is wired, but acceptance requires
   real tracking and voice adapters plus device-level audible-onset measurement.
 - **Recovery/calibration polish:** basic camera errors and stop/start behavior

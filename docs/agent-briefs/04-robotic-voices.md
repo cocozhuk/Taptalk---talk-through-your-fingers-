@@ -1,5 +1,9 @@
 # Robotic Voices Brief
 
+> Archived initial brief. The released first prototype supersedes this
+> four-identity exploration with two fixed local Piper models:
+> `en_US-hfc_female-medium` and `zh_CN-huayan-medium`.
+
 ## Mission
 
 Create four fixed, expressive, clearly synthetic TapTalk voice identities with

@@ -10,6 +10,7 @@ import {
   validateConfig,
 } from "./core/config.js";
 import { AppView } from "./ui/app-view.js";
+import { FirstRunExperience } from "./ui/first-run-experience.js";
 import {
   remove as removePiperVoice,
   TtsSession,
@@ -19,6 +20,12 @@ const view = new AppView();
 const repository = new ConfigRepository(window.localStorage);
 const camera = new BrowserCamera();
 const recorder = new BrowserRecorder();
+const firstRunExperience = new FirstRunExperience({
+  storage: window.localStorage,
+  onCameraAvailabilityChange: (available, message) => {
+    view.setCameraAvailability(available, message);
+  },
+});
 const supportNotice = document.querySelector("#support-notice");
 const supportNoticeDismiss = document.querySelector(
   "#support-notice-dismiss",
@@ -29,6 +36,7 @@ const voicePort = new PiperVoicePort({
   removeVoice: removePiperVoice,
   onProgress: ({ modelId, percent }) => {
     const language = modelId.startsWith("zh_") ? "Mandarin" : "English";
+    firstRunExperience.setVoiceProgress({ modelId, percent });
     view.setSettingsStatus(
       percent === null
         ? `Downloading the approved ${language} voice…`
@@ -44,6 +52,7 @@ let recordingActive = false;
 view.renderConfig(config);
 view.setTrackingMode("manual");
 view.setRecordingState("idle");
+firstRunExperience.start();
 
 const showFirstVisitSupportNotice = () => {
   if (!supportNotice || !supportNoticeDismiss) {
@@ -83,6 +92,7 @@ const showFirstVisitSupportNotice = () => {
 showFirstVisitSupportNotice();
 
 const warmVoiceAssignments = () => {
+  firstRunExperience.setVoicePreparing();
   view.setSettingsStatus(
     "Preparing the two approved Piper voices locally…",
     "success",
@@ -90,12 +100,14 @@ const warmVoiceAssignments = () => {
   void voicePort
     .warmAssignments(config.assignments)
     .then(() => {
+      firstRunExperience.setVoiceReady();
       view.setSettingsStatus(
         "Piper English and Mandarin voices are ready.",
         "success",
       );
     })
     .catch((error) => {
+      firstRunExperience.setVoiceError(error.message);
       view.setSettingsStatus(
         `Local Piper speech preparation failed: ${error.message}`,
         "error",
@@ -296,6 +308,7 @@ view.bind({
 warmVoiceAssignments();
 
 window.addEventListener("pagehide", () => {
+  firstRunExperience.destroy();
   manualTracker.destroy();
   visionTracker.destroy();
   if (recordingActive) {

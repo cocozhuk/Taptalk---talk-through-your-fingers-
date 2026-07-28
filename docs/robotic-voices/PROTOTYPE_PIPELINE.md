@@ -1,5 +1,10 @@
 # Robotic voices prototype pipeline
 
+> Historical design exploration — not the active TapTalk voice contract.
+> The current prototype uses exactly two fixed local Piper models:
+> `en_US-hfc_female-medium` for English and `zh_CN-huayan-medium` for Mandarin.
+> The four-identity design below is retained only as research history.
+
 Status: specialist recommendation and isolated browser-audio proof, 2026-07-25
 
 ## Decision

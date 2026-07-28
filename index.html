@@ -47,7 +47,7 @@
             </div>
           </div>
 
-          <div class="camera-stage">
+          <div id="camera-stage" class="camera-stage">
             <video
               id="camera-preview"
               muted
@@ -61,6 +61,70 @@
               <strong>Camera preview</strong>
               <span>Start when you are ready</span>
             </div>
+            <section
+              id="onboarding-guide"
+              class="onboarding-guide"
+              aria-label="TapTalk first-time guide"
+              hidden
+            >
+              <img
+                id="onboarding-image"
+                class="onboarding-image"
+                alt=""
+              />
+              <button
+                id="onboarding-back"
+                class="onboarding-hotspot onboarding-hotspot-back"
+                type="button"
+                aria-label="Go to the previous TapTalk guide slide"
+                hidden
+              ></button>
+              <button
+                id="onboarding-next"
+                class="onboarding-hotspot onboarding-hotspot-next"
+                type="button"
+                aria-label="Go to TapTalk guide slide 2"
+              ></button>
+              <p
+                id="onboarding-status"
+                class="sr-only"
+                role="status"
+                aria-live="polite"
+              ></p>
+            </section>
+            <section
+              id="voice-readiness"
+              class="voice-readiness"
+              data-state="loading"
+              aria-labelledby="voice-readiness-title"
+              aria-describedby="voice-readiness-detail"
+              hidden
+            >
+              <div class="voice-ready-orbit" aria-hidden="true"></div>
+              <div class="voice-paw" aria-hidden="true">
+                <i></i><i></i><i></i><i></i>
+                <span></span>
+              </div>
+              <p class="voice-readiness-kicker">Local voice setup</p>
+              <h2 id="voice-readiness-title">Preparing your voices…</h2>
+              <p id="voice-readiness-detail">
+                English and Mandarin are loading locally
+              </p>
+              <div class="voice-progress-row">
+                <div
+                  id="voice-progress-bar"
+                  class="voice-progress-bar"
+                  role="progressbar"
+                  aria-label="Voice preparation"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <span></span>
+                </div>
+                <strong id="voice-readiness-percent">…</strong>
+              </div>
+            </section>
             <div
               id="finger-overlay"
               class="finger-overlay"

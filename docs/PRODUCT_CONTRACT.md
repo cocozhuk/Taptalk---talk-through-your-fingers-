@@ -1,6 +1,6 @@
 # TapTalk Product Contract
 
-Status: architecture-resolved contract for the first prototype (2026-07-25)
+Status: architecture-resolved contract for the first prototype (updated 2026-07-28)
 
 This document is the shared source of truth for every TapTalk specialist. A
 specialist may propose a change, but only the Product Architecture task owns
@@ -34,9 +34,9 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 - Spoken languages are English and Mandarin Chinese only.
 - Each individual expression uses exactly one language. The eight finger
   assignments may contain a mixture of English and Mandarin expressions.
-- Exactly two locked language voices:
-  - English masculine
-  - Mandarin Chinese young-adult feminine
+- Exactly two locked local Piper language voices:
+  - English: `en_US-hfc_female-medium`
+  - Mandarin Chinese: `zh_CN-huayan-medium`
 - Voices must sound deliberately synthetic, mechanical, charming, and
   emotionally expressive.
 - Voice design may draw on broad warm/rough versus clean/bright robot
@@ -48,38 +48,32 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 
 ## Expression validation
 
-Every saved assignment has an explicit `en` or `zh` language. That declared
-language is the source of truth for validation and voice routing; the prototype
-does not guess or silently change it. Text is normalized to Unicode NFC and
-trimmed before validation.
+Every saved assignment contains an internal `en` or `zh` language derived from
+its expression text. The interface does not ask the user to choose a language.
+Text is normalized to Unicode NFC and trimmed before validation.
 
 ### English
 
 - One to five words.
 - A word is a non-empty token separated by whitespace after trimming.
-- English accepts Latin-script words, including accented letters and internal
-  apostrophes or hyphens.
-- A word may have one terminal comma, period, exclamation mark, or question
-  mark. Punctuation does not add a unit.
+- English accepts whitespace-separated Latin-letter words, including accented
+  letters.
 - Han characters, non-Latin letters, digits, emoji, controls, and unsupported
-  symbols are invalid.
+  symbols or punctuation are invalid.
 
 ### Mandarin Chinese
 
 - One to five Chinese characters.
 - Each Han-script Unicode code point counts as one word/unit.
-- Internal comma/enumeration punctuation and one terminal sentence mark are
-  permitted and do not add units.
 - Internal whitespace, Latin or other non-Han letters, digits, emoji, controls,
-  and unsupported symbols are invalid.
+  punctuation, and unsupported symbols are invalid.
 
 ### Mixed-script input
 
 An individual expression containing both English and Mandarin lexical content
-is invalid. The interface must explain that languages can be mixed across
-fingers, but not inside one finger assignment. Script validation does not claim
-to identify natural language: Han-only text declared as `zh` is routed as
-Mandarin.
+is invalid. The interface explains that languages can be mixed across fingers,
+but not inside one finger assignment. Script validation does not claim to
+identify natural language: Han-only text is routed as Mandarin.
 
 The exact accepted grammars, normalization, validation codes, error priority,
 and examples are normative in the Architecture Specification.
@@ -132,15 +126,15 @@ untracked
 
 - The language of the assigned expression determines whether an English or
   Mandarin voice is used.
-- English always routes to `en_masculine`; Mandarin always routes to
-  `zh_feminine`.
+- English always routes to `en_US-hfc_female-medium`; Mandarin always routes to
+  `zh_CN-huayan-medium`.
 - There is no user-facing voice preference or per-finger voice selection.
 - An activation snapshots its saved text, language, and current compatible
   voice. Later edits affect only later activations.
 - At most one voice request plays at a time. The newest confirmed activation
   preempts the previous request, regardless of finger.
-- Internal implementation may use a speech engine plus robotic audio
-  processing, but the user-facing interface exposes no voice picker.
+- Speech is synthesized locally with Piper after the two models have downloaded
+  and been cached by the browser. The interface exposes no voice picker.
 
 ## Latency target
 

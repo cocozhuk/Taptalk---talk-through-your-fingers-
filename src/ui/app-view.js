@@ -81,6 +81,7 @@ export class AppView {
     this.renderFingerMarkers();
     this.renderThumbMarkers();
     this.renderAssignmentFields();
+    this.cameraAvailable = true;
     this.cameraState = "off";
     this.recordingState = "idle";
   }
@@ -206,12 +207,22 @@ export class AppView {
     this.elements.cameraToggle.textContent = isActive
       ? "Stop camera"
       : "Start camera";
-    this.elements.cameraToggle.disabled = state === "starting";
+    this.elements.cameraToggle.disabled =
+      state === "starting" || (!isActive && !this.cameraAvailable);
     this.elements.cameraPlaceholder.hidden = isActive;
     this.elements.recordToggle.disabled =
       this.recordingState === "saving" ||
       (this.recordingState !== "recording" && !isActive);
     this.elements.cameraMessage.textContent = message;
+  }
+
+  setCameraAvailability(available, message = "") {
+    this.cameraAvailable = Boolean(available);
+    this.elements.cameraToggle.disabled =
+      !this.cameraAvailable && this.cameraState !== "active";
+    if (message) {
+      this.elements.cameraMessage.textContent = message;
+    }
   }
 
   setRecordingState(state, message = "") {

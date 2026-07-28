@@ -30,10 +30,10 @@ so the user's physical left hand normally appears on the right side of the
 preview. Mirroring changes display coordinates only; it never changes a finger
 identifier, label, expression, event, or voice request.
 
-The interface has two locked voice defaults: the original English masculine
-voice and one young-adult Mandarin Chinese feminine voice. No voice settings,
-system voice names, operating-system picker, custom voice upload, or additional
-identity is shown.
+The interface has two locked local Piper defaults:
+`en_US-hfc_female-medium` for English and `zh_CN-huayan-medium` for Mandarin.
+No voice settings, system voice names, operating-system picker, custom voice
+upload, or additional identity is shown.
 
 ## Experience principles
 
@@ -196,24 +196,12 @@ The `Continue` action is enabled only when the App State validation result says
 all eight assignments are valid. The UI does not implement validation rules
 independently.
 
-### 5. Choose voices during onboarding
+### 5. Prepare the two voices
 
-The interface displays both language preferences at once:
-
-```text
-English voice
-  (•) Masculine robot    [Preview]
-  ( ) Feminine robot     [Preview]
-
-Mandarin Chinese voice
-  ( ) Masculine robot    [Preview]
-  (•) Feminine robot     [Preview]
-```
-
-Each row is a native single-choice group. Preview is a separate labeled button,
-does not change the selection, and emits only a voice-preview request. Voice
-implementation supplies the preview phrase and audio. The UI does not expose
-engine voices or processing controls.
+Voice preparation begins as soon as the page opens. The first-run guide does
+not ask the user to choose or preview a voice. After the three slides, the
+camera stage shows combined English/Mandarin download progress until both fixed
+Piper models are ready. Only then are the camera controls enabled.
 
 ### 6. Practice
 
@@ -314,25 +302,23 @@ Live workspace requirements:
 │                                                                              │
 │ LEFT HAND                              RIGHT HAND                            │
 │ Index                                  Index                                 │
-│ [English ▼] [Hello____________] 1/5    [中文 ▼] [谢谢________] 2/5            │
+│ [Hello_______________________] 1/5    [谢谢_______________________] 2/5      │
 │ Middle                                 Middle                                │
-│ [English ▼] [Yes______________] 1/5    [English ▼] [No________] 1/5          │
+│ [Yes_________________________] 1/5    [No_________________________] 1/5      │
 │ Ring                                   Ring                                  │
-│ [English ▼] [Please wait______] 2/5    [中文 ▼] [请稍等______] 3/5            │
+│ [Please wait_________________] 2/5    [请稍等_____________________] 3/5      │
 │ Pinky                                  Pinky                                 │
-│ [English ▼] [Thank you________] 2/5    [中文 ▼] [可以________] 2/5            │
+│ [Thank you___________________] 2/5    [可以_______________________] 2/5      │
 │                                                                              │
-│ English voice: Masculine robot   Mandarin voice: Feminine robot   [Change]  │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Editor behavior:
 
-- Every row has a persistent semantic finger label, one language selector with
-  only `English` and `中文（普通话）`, one short single-line input, and a `N/5`
-  count supplied by App State.
+- Every row has a persistent semantic finger label, one short single-line
+  input, and a `N/5` count supplied by App State. Language is detected
+  automatically from the expression.
 - The input is not a textarea and does not grow into long-form composition.
-- Changing the selected language never deletes or transforms existing text.
   App State revalidates it and the UI presents the returned result.
 - Field-level errors appear adjacent to the field and are associated through
   the platform accessibility description mechanism.
@@ -375,7 +361,7 @@ not claim success before the persistence owner confirms it.
 | Camera interrupted | Immediately replace video with a camera-off placeholder; do not retain a last frame | `Camera stopped.` and `Restart camera` | None |
 | Permission revoked | Replace video with permission recovery | Permission-specific instructions | None |
 | Configuration unavailable | Replace mapping interaction with recovery | `Your expressions could not be loaded.`; `Try again`; optional reset entry | None |
-| Voice playback failed | Keep camera and activation feedback running | Nonblocking `Voice could not play. Check voice settings.` | Confirmed selection remains confirmed |
+| Voice playback failed | Keep camera and activation feedback running | Nonblocking `Voice could not play. Refresh to prepare the local voices again.` | Confirmed selection remains confirmed |
 
 The duration of hand-loss tolerance, confidence thresholds, and safe
 reacquisition are inputs from Hand Tracking/Product Architecture. Interface
@@ -544,9 +530,8 @@ copy without changing the editor structure.
   selected or held state.
 - Camera guidance does not rely only on seeing an outline; it also appears as
   text.
-- Preview-voice buttons have full labels such as
-  `Preview English masculine voice`, not repeated ambiguous `Preview` names for
-  assistive technology.
+- Voice download progress uses one named progressbar and exposes the combined
+  English/Mandarin percentage to assistive technology.
 
 ## Integration-facing component contract
 
@@ -567,8 +552,8 @@ type FingerId =
 type ExpressionLanguage = "en" | "zh-CN";
 
 type VoiceId =
-  | "en-masculine"
-  | "zh-CN-feminine";
+  | "en_US-hfc_female-medium"
+  | "zh_CN-huayan-medium";
 
 type ContactVisualState =
   | "not_visible"
