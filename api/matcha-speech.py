@@ -1,14 +1,12 @@
 from collections import OrderedDict
+import ctypes
 from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 from pathlib import Path
+import sys
 from threading import Lock
 from urllib.parse import parse_qs, urlparse
 import wave
-
-import numpy as np
-import sherpa_onnx
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODEL_ROOT = PROJECT_ROOT / "models" / "matcha-zh-baker"
@@ -19,6 +17,16 @@ HAN_RANGES = (
     (0x4E00, 0x9FFF),
     (0xF900, 0xFAFF),
 )
+
+if sys.platform.startswith("linux"):
+    ctypes.CDLL(
+        str(MODEL_ROOT / "runtime" / "libonnxruntime.so"),
+        mode=ctypes.RTLD_GLOBAL,
+    )
+
+import numpy as np
+import sherpa_onnx
+
 
 _cache = OrderedDict()
 _cache_lock = Lock()

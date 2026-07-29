@@ -6,6 +6,9 @@ and hosted Vercel function.
 - Acoustic model: `matcha-icefall-zh-baker`
 - Vocoder: `vocos-22khz-univ.onnx`
 - Runtime: `sherpa-onnx`
+- Hosted runtime library: `runtime/libonnxruntime.so`, extracted unchanged
+  from the official `sherpa-onnx-core==1.13.4` Linux wheel because Vercel's
+  dependency optimizer does not retain this dynamically loaded file.
 - Upstream model source:
   <https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models>
 - Training code:

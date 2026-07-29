@@ -1,5 +1,6 @@
 *.fst binary
 *.onnx binary
+*.so binary
 *.task binary
 *.wasm binary
 *.wav binary
