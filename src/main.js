@@ -39,8 +39,8 @@ const voicePort = new PiperVoicePort({
     firstRunExperience.setVoiceProgress({ modelId, percent });
     view.setSettingsStatus(
       percent === null
-        ? `Downloading the approved ${language} voice…`
-        : `Downloading the approved ${language} voice… ${percent}%`,
+        ? `Preparing the approved ${language} voice…`
+        : `Preparing the approved ${language} voice… ${percent}%`,
       "success",
     );
   },
@@ -94,7 +94,7 @@ showFirstVisitSupportNotice();
 const warmVoiceAssignments = () => {
   firstRunExperience.setVoicePreparing();
   view.setSettingsStatus(
-    "Preparing the two approved Piper voices locally…",
+    "Preparing Piper English and Matcha Mandarin locally…",
     "success",
   );
   void voicePort
@@ -102,14 +102,14 @@ const warmVoiceAssignments = () => {
     .then(() => {
       firstRunExperience.setVoiceReady();
       view.setSettingsStatus(
-        "Piper English and Mandarin voices are ready.",
+        "Piper English and Matcha Mandarin are ready.",
         "success",
       );
     })
     .catch((error) => {
       firstRunExperience.setVoiceError(error.message);
       view.setSettingsStatus(
-        `Local Piper speech preparation failed: ${error.message}`,
+        `Local voice preparation failed: ${error.message}`,
         "error",
       );
     });

@@ -166,8 +166,9 @@ Activation {
 
 The four-value union is retained only at this internal compatibility boundary.
 The current application emits `en_masculine` for English and `zh_feminine` for
-Mandarin, which the active adapter maps to Piper `en_US-hfc_female-medium` and
-`zh_CN-huayan-medium`. The other two legacy values are not user-facing voices.
+Mandarin, which the active adapter maps to Piper
+`en_US-hfc_female-medium` and Matcha `matcha-icefall-zh-baker`. The other two
+legacy values are not user-facing voices.
 
 `dispatchRouteResult(result, sinks)` first calls the UI activation sink in
 activation order. It then invokes every speech sink in that same order without

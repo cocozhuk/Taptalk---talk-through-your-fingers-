@@ -78,12 +78,12 @@ function setup({ completed = false } = {}) {
   };
 }
 
-test("maps two sequential voice downloads into one visible percentage", () => {
+test("maps English and Mandarin preparation into one visible percentage", () => {
   assert.equal(mapVoiceProgress("en_US-hfc_female-medium", 0), 0);
   assert.equal(mapVoiceProgress("en_US-hfc_female-medium", 100), 50);
-  assert.equal(mapVoiceProgress("zh_CN-huayan-medium", 0), 50);
-  assert.equal(mapVoiceProgress("zh_CN-huayan-medium", 100), 100);
-  assert.equal(mapVoiceProgress("zh_CN-huayan-medium", null), null);
+  assert.equal(mapVoiceProgress("zh_matcha-baker-local", 0), 50);
+  assert.equal(mapVoiceProgress("zh_matcha-baker-local", 100), 100);
+  assert.equal(mapVoiceProgress("zh_matcha-baker-local", null), null);
 });
 
 test("a new browser must finish all three slides before voice readiness", () => {
@@ -120,7 +120,7 @@ test("a returning browser skips slides and sees live voice progress", () => {
   const setupResult = setup({ completed: true });
   setupResult.experience.start();
   setupResult.experience.setVoiceProgress({
-    modelId: "zh_CN-huayan-medium",
+    modelId: "zh_matcha-baker-local",
     percent: 40,
   });
 

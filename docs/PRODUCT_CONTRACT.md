@@ -1,6 +1,6 @@
 # TapTalk Product Contract
 
-Status: architecture-resolved contract for the first prototype (updated 2026-07-28)
+Status: architecture-resolved contract for the first prototype (updated 2026-07-29)
 
 This document is the shared source of truth for every TapTalk specialist. A
 specialist may propose a change, but only the Product Architecture task owns
@@ -34,9 +34,9 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 - Spoken languages are English and Mandarin Chinese only.
 - Each individual expression uses exactly one language. The eight finger
   assignments may contain a mixture of English and Mandarin expressions.
-- Exactly two locked local Piper language voices:
-  - English: `en_US-hfc_female-medium`
-  - Mandarin Chinese: `zh_CN-huayan-medium`
+- Exactly two locked local language voices:
+  - English: Piper `en_US-hfc_female-medium`
+  - Mandarin Chinese: Matcha `matcha-icefall-zh-baker`
 - Voices must sound deliberately synthetic, mechanical, charming, and
   emotionally expressive.
 - Voice design may draw on broad warm/rough versus clean/bright robot
@@ -126,15 +126,20 @@ untracked
 
 - The language of the assigned expression determines whether an English or
   Mandarin voice is used.
-- English always routes to `en_US-hfc_female-medium`; Mandarin always routes to
-  `zh_CN-huayan-medium`.
+- English always routes to Piper `en_US-hfc_female-medium`; Mandarin always
+  routes to Matcha `matcha-icefall-zh-baker`.
 - There is no user-facing voice preference or per-finger voice selection.
 - An activation snapshots its saved text, language, and current compatible
   voice. Later edits affect only later activations.
 - At most one voice request plays at a time. The newest confirmed activation
   preempts the previous request, regardless of finger.
-- Speech is synthesized locally with Piper after the two models have downloaded
-  and been cached by the browser. The interface exposes no voice picker.
+- English speech is synthesized locally with Piper in the browser. Mandarin
+  speech is prepared by the desktop Matcha worker during local use or the
+  same-origin Matcha function when hosted. A one-Han-character assignment is
+  generated inside `开始，{character}，结束`, isolated between the two pauses,
+  faded at its edges, and padded with 150 ms of silence on each side.
+  Two-to-five-character Mandarin expressions use direct Matcha synthesis. The
+  interface exposes no voice picker.
 
 ## Latency target
 

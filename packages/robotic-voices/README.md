@@ -2,7 +2,8 @@
 
 > Archived experiment — this package is not used by the current TapTalk app.
 > The active implementation is `src/adapters/piper-voice.js` and exposes only
-> the two fixed Piper language voices documented in the main README. The
+> the fixed Piper English and Matcha Mandarin voices documented in the main
+> README. The
 > four-identity API below remains for historical tests and research.
 
 This package owns the browser-side speech boundary for exactly four identities:

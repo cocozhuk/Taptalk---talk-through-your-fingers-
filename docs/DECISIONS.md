@@ -1,6 +1,6 @@
 # TapTalk Decision Log
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 This log distinguishes decisions supplied and accepted in the product baseline
 from resolutions made by Product Architecture under its delegated role.
@@ -19,11 +19,11 @@ specialist.
 | U-002 | Assignment cardinality | Exactly one expression of one to five units per finger. |
 | U-003 | Languages | English and Mandarin only; one language inside an expression, with languages allowed to differ across fingers. |
 | U-004 | Mandarin unit | One Han-script character counts as one word/unit. |
-| U-005 | Voices | Exactly two locked local Piper defaults: `en_US-hfc_female-medium` for English and `zh_CN-huayan-medium` for Mandarin. No voice picker, system catalogue, or protected-character imitation. |
+| U-005 | Voices | Exactly two locked local defaults: Piper `en_US-hfc_female-medium` for English and Matcha `matcha-icefall-zh-baker` for Mandarin. No voice picker, system catalogue, or protected-character imitation. |
 | U-006 | Contact/rearm | One sustained contact activates once; confirmed separation is required before the same finger can activate again, with no additional UI/audio cooldown after rearm. |
 | U-007 | Speech preemption | Confirmed activations are submitted in order, but every new activation interrupts the currently playing phrase regardless of finger. Only the newest phrase continues; nothing queues. |
 | U-008 | Latency and cadence | Audible onset targets no more than 500 ms after confirmed contact. Voices remain at natural 1× speed; every newer tap may cut off unfinished speech and start its own expression without waiting. |
-| U-009 | Privacy/storage | Configuration stays on device; webcam processing is local and frames are not stored, uploaded, or retained by default. An explicit recording session composes the mirrored camera, visible fingertip labels, and locally generated Piper speech audio into a local download; TapTalk uploads and retains no copy. |
+| U-009 | Privacy/storage | Configuration stays on device; webcam processing is local and frames are not stored, uploaded, or retained by default. An explicit recording session composes the mirrored camera, visible fingertip labels, and locally generated speech audio into a local download; TapTalk uploads and retains no copy. |
 | U-010 | Semantic handedness | Stable user-hand finger IDs do not change when the camera preview is mirrored. |
 
 ## Product Architecture resolutions
@@ -40,7 +40,7 @@ normative detail is in [`ARCHITECTURE_SPEC.md`](ARCHITECTURE_SPEC.md).
 | A-004 | Contact confirmation requires 60 ms and at least 2 usable samples; separation requires 120 ms and at least 3 usable samples; a tracking gap over 100 ms causes loss and disarming. | Accepted prototype defaults. They balance responsiveness and duplicate suppression; empirical revision requires a logged contract change. |
 | A-005 | Initial visibility and reacquisition enter `rearm_required`; only confirmed separation arms a finger. Contact and release use spatial hysteresis, while calibrated distances remain Hand Tracking's responsibility. | Accepted for prototype. It prevents a held pose, hand loss, or camera recovery from creating synthetic activation. |
 | A-006 | Dispatch sorts by confirmation timestamp, then frame sequence, then same-frame finger order: left index, middle, ring, pinky; right index, middle, ring, pinky. | Accepted for prototype. This preserves first-confirmed order and gives truly simultaneous input a total order independent of implementation iteration. |
-| A-007 | Voice routing is fixed by language: English uses `en_US-hfc_female-medium` and Mandarin uses `zh_CN-huayan-medium`. Legacy saved preference fields are ignored by dispatch and no voice controls are exposed. | Accepted as the final prototype selection model. It removes unnecessary choice and makes routing deterministic across supported Chrome/macOS devices. |
+| A-007 | Voice routing is fixed by language: English uses Piper `en_US-hfc_female-medium` and Mandarin uses Matcha `matcha-icefall-zh-baker`. One-character Mandarin is generated in a fixed carrier phrase, cropped, faded, and padded with 150 ms of silence per side. Legacy saved preference fields are ignored and no voice controls are exposed. | Accepted for the local desktop prototype after direct single-character synthesis proved unreliable. It preserves deterministic routing and recordable Web Audio. |
 | A-008 | Warm-path acceptance is p95 ≤100 ms to visual presentation, p95 ≤50 ms to speech submission, and p95 ≤500 ms to output-graph audible onset, all from the confirming frame's capture time. | Accepted for prototype. Natural speech is preserved while a newer activation may interrupt before completion. |
 | A-009 | Tracking/camera recovery starts a new session when appropriate, disarms affected fingers, rejects stale/duplicate events, and preserves configuration. Speech failure is visible, is not auto-retried, and does not undo visual activation. | Accepted for prototype. Recovery cannot create speech without a new deliberate contact. |
 | A-010 | Invalid saved configuration is never spoken. A complete valid factory configuration is used in memory without overwriting bad stored data until explicit reset or replacement. | Accepted for prototype. This keeps the product usable while making destructive recovery user-controlled. |

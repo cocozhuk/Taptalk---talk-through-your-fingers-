@@ -4,12 +4,15 @@ import { extname, join, resolve, sep } from "node:path";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
+import { MatchaWorkerClient } from "./matcha-worker-client.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const host = "127.0.0.1";
 const requestedPort = Number.parseInt(process.env.TAPTALK_PORT ?? "4173", 10);
 const port = Number.isSafeInteger(requestedPort) ? requestedPort : 4173;
 const speechCache = new Map();
+const matchaSpeechCache = new Map();
+const matchaWorker = new MatchaWorkerClient();
 let nativeSynthesizerPromise = null;
 const speechProfiles = Object.freeze({
   en_shelley: Object.freeze({
@@ -36,6 +39,10 @@ const contentTypes = {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${host}:${port}`);
+  if (url.pathname === "/api/matcha-speech") {
+    await serveMatchaSpeech(url, response);
+    return;
+  }
   if (url.pathname === "/api/speech") {
     await serveSpeech(url, response);
     return;
@@ -70,9 +77,53 @@ const server = createServer(async (request, response) => {
   }
 });
 
+async function serveMatchaSpeech(url, response) {
+  const text = (url.searchParams.get("text") ?? "").trim();
+  if (!text || [...text].length > 20) {
+    response.writeHead(400, {
+      "Content-Type": "text/plain; charset=utf-8",
+    });
+    response.end("Invalid TapTalk Mandarin speech request");
+    return;
+  }
+
+  try {
+    let audio = matchaSpeechCache.get(text);
+    if (!audio) {
+      audio = await matchaWorker.synthesize(text);
+      matchaSpeechCache.set(text, audio);
+      if (matchaSpeechCache.size > 64) {
+        matchaSpeechCache.delete(
+          matchaSpeechCache.keys().next().value,
+        );
+      }
+    }
+    response.writeHead(200, {
+      "Cache-Control": "private, max-age=3600",
+      "Content-Length": audio.length,
+      "Content-Type": "audio/wav",
+      "X-Content-Type-Options": "nosniff",
+    });
+    response.end(audio);
+  } catch (error) {
+    console.error(`Matcha synthesis failed: ${error.message}`);
+    response.writeHead(500, {
+      "Content-Type": "text/plain; charset=utf-8",
+    });
+    response.end("Local Matcha speech synthesis failed");
+  }
+}
+
 server.listen(port, host, () => {
   console.log(`TapTalk development server: http://${host}:${port}`);
 });
+
+const shutDown = () => {
+  matchaWorker.stop();
+  server.close(() => process.exit(0));
+};
+process.once("SIGINT", shutDown);
+process.once("SIGTERM", shutDown);
 
 function resolvePublicPath(pathname) {
   if (pathname === "/" || pathname === "/index.html") {

@@ -2,9 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  LOCAL_VOICE_MODELS,
   PIPER_VOICE_MODELS,
   PiperVoicePort,
 } from "../src/adapters/piper-voice.js";
+
+const matchaRequests = [];
+
+async function fakeFetch(url) {
+  matchaRequests.push(url);
+  return {
+    ok: true,
+    arrayBuffer: async () => new ArrayBuffer(16),
+    text: async () => "",
+  };
+}
 
 class FakeSource extends EventTarget {
   constructor() {
@@ -118,35 +130,42 @@ function assignments() {
   };
 }
 
-test("locks synthesis to the two approved Piper model IDs", async () => {
+test("locks synthesis to Piper English and Matcha Mandarin", async () => {
   FakeTtsSession.reset();
+  matchaRequests.length = 0;
   const port = new PiperVoicePort({
     TtsSession: FakeTtsSession,
     AudioContext: FakeAudioContext,
+    fetchImpl: fakeFetch,
   });
 
   await port.warmAssignments(assignments());
 
   assert.deepEqual(PIPER_VOICE_MODELS, {
     en: "en_US-hfc_female-medium",
-    zh: "zh_CN-huayan-medium",
+  });
+  assert.deepEqual(LOCAL_VOICE_MODELS, {
+    en: "en_US-hfc_female-medium",
+    zh: "zh_matcha-baker-local",
   });
   assert.deepEqual(FakeTtsSession.created, [
     PIPER_VOICE_MODELS.en,
-    PIPER_VOICE_MODELS.zh,
   ]);
   assert.deepEqual(FakeTtsSession.predictions, [
     { text: "Hello", voiceId: PIPER_VOICE_MODELS.en },
-    { text: "你好", voiceId: PIPER_VOICE_MODELS.zh },
+  ]);
+  assert.deepEqual(matchaRequests, [
+    "/api/matcha-speech?text=%E4%BD%A0%E5%A5%BD",
   ]);
 });
 
-test("plays the approved Piper audio to speakers and recorder together", async () => {
+test("plays approved local audio to speakers and recorder together", async () => {
   FakeTtsSession.reset();
   const port = new PiperVoicePort({
     TtsSession: FakeTtsSession,
     AudioContext: FakeAudioContext,
     clock: () => 321,
+    fetchImpl: fakeFetch,
   });
   await port.warmAssignments(assignments());
   let audibleAt = null;
@@ -179,6 +198,7 @@ test("starts continuous silent audio before recording to keep video synchronized
   const port = new PiperVoicePort({
     TtsSession: FakeTtsSession,
     AudioContext: FakeAudioContext,
+    fetchImpl: fakeFetch,
   });
   port.audioContext.state = "suspended";
 
@@ -197,11 +217,12 @@ test("starts continuous silent audio before recording to keep video synchronized
   assert.equal(clockSource.disconnected, true);
 });
 
-test("rapid replacement interrupts active Piper playback", async () => {
+test("rapid replacement interrupts active local playback", async () => {
   FakeTtsSession.reset();
   const port = new PiperVoicePort({
     TtsSession: FakeTtsSession,
     AudioContext: FakeAudioContext,
+    fetchImpl: fakeFetch,
   });
   await port.warmAssignments(assignments());
 

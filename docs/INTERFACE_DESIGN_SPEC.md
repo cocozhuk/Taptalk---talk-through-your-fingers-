@@ -30,8 +30,9 @@ so the user's physical left hand normally appears on the right side of the
 preview. Mirroring changes display coordinates only; it never changes a finger
 identifier, label, expression, event, or voice request.
 
-The interface has two locked local Piper defaults:
-`en_US-hfc_female-medium` for English and `zh_CN-huayan-medium` for Mandarin.
+The interface has two locked local defaults: Piper
+`en_US-hfc_female-medium` for English and Matcha
+`matcha-icefall-zh-baker` for Mandarin.
 No voice settings, system voice names, operating-system picker, custom voice
 upload, or additional identity is shown.
 
@@ -553,7 +554,7 @@ type ExpressionLanguage = "en" | "zh-CN";
 
 type VoiceId =
   | "en_US-hfc_female-medium"
-  | "zh_CN-huayan-medium";
+  | "zh_matcha-baker-local";
 
 type ContactVisualState =
   | "not_visible"

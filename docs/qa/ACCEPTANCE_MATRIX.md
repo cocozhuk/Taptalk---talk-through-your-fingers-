@@ -209,7 +209,7 @@ non-destructive editing behavior.
 
 | ID | Pri. | Coverage and method | Hard pass criteria |
 |---|---:|---|---|
-| VO-01 | P1 | Use unique English and Mandarin assignments across fingers, including a stored legacy configuration with opposite preference values. Inspect routing and audible output. | English always uses Piper `en_US-hfc_female-medium` and Mandarin always uses Piper `zh_CN-huayan-medium`. Legacy preferences do not alter routing. |
+| VO-01 | P1 | Use unique English and Mandarin assignments across fingers, including a stored legacy configuration with opposite preference values. Inspect routing and audible output. | English always uses Piper `en_US-hfc_female-medium` and Mandarin always uses Matcha `matcha-icefall-zh-baker`. A one-character Mandarin assignment uses the approved context crop with 150 ms padding per side. Legacy preferences do not alter routing. |
 | VO-02 | P1 | Inspect the complete interface and runtime route. | No voice-choice controls or operating-system/system-voice catalogue are exposed. |
 | VO-03 | P1 | Trigger a second long expression after the first becomes audible but well before it completes. Run same-finger and different-finger English/English, Mandarin/Mandarin, and cross-language pairs for 20 total trials. Isolate request streams or waveforms where possible. | The current phrase is cut off and replaced by the newest request in every case, with no backlog. Only the final request completes when taps continue. |
 | VO-04 | P1 | Review asset/model provenance and perform an intelligibility/identity listening check without prompting listeners with protected character names. | Each output is intelligible in its assigned language and distinguishable as the selected synthetic, mechanical TapTalk identity. Provenance contains no cloning or imitation instruction for a protected character. QA does not make a legal non-infringement determination. |
@@ -249,7 +249,7 @@ non-destructive editing behavior.
 |---|---:|---|---|
 | CL-01 | P0 | Search user-facing copy, demo script, README/release notes, and metadata for capability claims. Compare them with executed evidence. | TapTalk is described only as learned thumb-to-fingertip input for eight expressions. It never claims sign-language recognition, arbitrary gesture interpretation, translation, intent prediction, unrestricted text entry, or a general voice catalogue. |
 | CL-02 | P0 | Review the prototype's setup/help/about and release handoff against the latest failed, blocked, and characterization cases. | Experimental status, tested browsers/cameras/conditions, hand-loss behavior, environmental and mobility limits, language edge cases, latency distribution, local-data behavior, and input/accessibility limits are disclosed accurately. No `BLOCKED`, `INCONCLUSIVE`, or untested condition is described as working. |
-| CL-03 | P1 | Compare implementation configuration and UI with fixed product boundaries. | There are exactly eight non-thumb inputs, one expression per finger, one to five units per expression, only English/Mandarin, and exactly two fixed local Piper voices. No hidden or “advanced” path broadens those boundaries. |
+| CL-03 | P1 | Compare implementation configuration and UI with fixed product boundaries. | There are exactly eight non-thumb inputs, one expression per finger, one to five units per expression, only English/Mandarin, and exactly two fixed local voices. No hidden or “advanced” path broadens those boundaries. |
 
 ## Full prototype decision
 

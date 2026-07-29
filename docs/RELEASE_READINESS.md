@@ -1,9 +1,9 @@
 # TapTalk Prototype Release Readiness
 
-Status: first local prototype implemented; ready for controlled macOS + Chrome
-testing
+Status: first local and hosted prototype implemented; ready for controlled
+macOS + Chrome testing
 
-Last updated: 2026-07-28
+Last updated: 2026-07-30
 
 ## Verified in the current prototype
 
@@ -12,21 +12,22 @@ Last updated: 2026-07-28
 - The browser asks for camera access only after an explicit user action.
 - The integration layer does not upload or persist camera frames by default.
   User-initiated recording saves the mirrored camera, fingertip overlays, and
-  locally generated Piper speech audio as a local browser download, with
+  locally generated speech audio as a local browser download, with
   visible recording state.
 - Configuration contains exactly eight assignments and persists only through
   browser local storage.
 - Reset removes the persisted configuration and restores safe defaults.
 - English and Mandarin expression rules reject mixed or ambiguous input.
-- The UI exposes no voice picker. English uses
-  `en_US-hfc_female-medium`; Mandarin uses `zh_CN-huayan-medium`.
+- The UI exposes no voice picker. English uses Piper
+  `en_US-hfc_female-medium`; Mandarin uses Matcha
+  `matcha-icefall-zh-baker`.
 - Voice preparation begins on page load, reports combined progress, and blocks
   camera start until both local models are ready.
 - Activation batches use timestamp order and the documented stable finger-ID
   tie-break.
 - Speech uses one global newest-wins lane: every new tap interrupts the current
   phrase and no stale request is queued.
-- Local Piper speech supports immediate newest-tap preemption and is routed to
+- Local speech supports immediate newest-tap preemption and is routed to
   both the speakers and the recording stream.
 - Up to two hands are detected locally with MediaPipe landmarks.
 - The specialist contact state machine is wired to the webcam path and requires
@@ -47,8 +48,8 @@ Last updated: 2026-07-28
 | Thumb-to-fingertip contact confirmation | Integrated and unit-tested | Physical threshold calibration |
 | Jitter, occlusion, hand loss and rearming | State machine tested | Real-world reliability results |
 | Live fingertip-adjacent label positions | Integrated | Visual tests across devices and occlusion |
-| Two locked local Piper language voices | Integrated and automated | Listening evaluation on supported devices |
-| Global newest-tap speech preemption | Piper/Web Audio interruption integrated | Physical rapid-sequence verification |
+| Two locked local language voices | Piper English and Matcha Mandarin integrated | Listening evaluation on supported devices |
+| Global newest-tap speech preemption | Web Audio interruption integrated | Physical rapid-sequence verification |
 | Audible onset within 500 ms | Instrumented, not qualified | Real adapters and physical-device measurement |
 | Complete recovery/calibration UX | Basic camera errors only | Interface Design and QA review |
 | Accessibility acceptance | Basic semantic/keyboard/reduced-motion support | QA accessibility audit |
@@ -58,8 +59,12 @@ Last updated: 2026-07-28
 
 - Hand landmarks and contact detection are a first-prototype implementation,
   not sign-language or arbitrary-gesture recognition.
-- First use requires downloading and caching both Piper models. Cold-start time
-  varies with network speed and must be tested from an empty browser cache.
+- Local setup requires `npm run setup:matcha` once. The checked-in Matcha
+  models occupy approximately 125 MB, and the English Piper model downloads on
+  first use.
+- Hosted Mandarin uses a Vercel Python function containing the same Matcha
+  model and 150 ms one-character crop. Cold starts and hosted synthesis latency
+  still require production measurement.
 - Audible-start telemetry estimates output onset and is not a substitute for
   acoustic loopback measurement.
 - Static label positions are used only while the camera is off; live positions

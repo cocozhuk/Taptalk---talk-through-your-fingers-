@@ -2,7 +2,8 @@
 
 > Archived initial brief. The released first prototype supersedes this
 > four-identity exploration with two fixed local Piper models:
-> `en_US-hfc_female-medium` and `zh_CN-huayan-medium`.
+> Piper `en_US-hfc_female-medium` and Matcha
+> `matcha-icefall-zh-baker`.
 
 ## Mission
 

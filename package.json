@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/serve.mjs",
+    "setup:matcha": "node scripts/setup-matcha.mjs",
     "build": "node scripts/build.mjs",
     "postinstall": "node scripts/patch-piper.mjs",
     "test": "node --test",

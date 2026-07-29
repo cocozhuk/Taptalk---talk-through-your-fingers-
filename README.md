@@ -47,7 +47,9 @@ audible.
 
 - macOS with Google Chrome for the fully supported prototype;
 - Node.js 20 or newer;
-- an internet connection the first time each Piper voice model downloads;
+- Python 3.9 or newer for the local Matcha Mandarin worker;
+- an internet connection during initial dependency setup and the first English
+  Piper download;
 - a standard webcam.
 
 ### Start TapTalk
@@ -56,6 +58,7 @@ audible.
 git clone git@github.com:cocozhuk/Taptalk---talk-through-your-fingers-.git
 cd Taptalk---talk-through-your-fingers-
 npm install
+npm run setup:matcha
 npm run dev
 ```
 
@@ -83,7 +86,7 @@ This repository contains the complete first working prototype:
 - labels that follow the detected fingertips;
 - thumb-to-fingertip contact detection with separation rearming;
 - English and Mandarin language detection from the expression itself;
-- fixed local Piper English and Mandarin voices;
+- fixed local Piper English and Matcha Mandarin voices;
 - newest-tap-wins speech with no hidden audio queue;
 - local MP4 recording with fingertip labels and TapTalk speech included;
 - local configuration storage and reset;
@@ -121,7 +124,7 @@ These boundaries are intentional parts of TapTalk:
 | Language per finger | One language inside each assignment |
 | Mixed setup | English and Chinese assignments can coexist across fingers |
 | Spoken languages | English and Mandarin Chinese only |
-| Default voices | Piper `hfc_female` for English, `huayan` for Mandarin |
+| Default voices | Piper `hfc_female` for English, Matcha Baker for Mandarin |
 | Rearming | A finger must separate from the thumb before activating again |
 | Simultaneous contacts | First confirmed contact is served first |
 | Target latency | Contact to speech within 500 ms |
@@ -143,14 +146,19 @@ cannot silently trigger speech.
 
 ### Speech
 
-TapTalk synthesizes English and Mandarin directly in Chrome with two fixed
-Piper voice models:
+TapTalk uses two fixed local voices:
 
-- **English:** `en_US-hfc_female-medium`
-- **Mandarin Chinese:** `zh_CN-huayan-medium`
+- **English:** Piper `en_US-hfc_female-medium`
+- **Mandarin Chinese:** Matcha `matcha-icefall-zh-baker`
 
-The voice models download on first use and are cached by the browser. Generated
-audio is played through Web Audio and routed into the recorder at the same time.
+English is synthesized in Chrome. Mandarin is prepared by the project-local
+Matcha worker during desktop use and by the same Matcha model in a Vercel
+Python function when hosted. One-character Mandarin assignments are
+synthesized inside a fixed carrier phrase, isolated between its pauses, and
+padded with 150 ms of silence on each side; longer Mandarin assignments use
+Matcha directly. All eight finished buffers are prepared before camera use.
+Generated audio is played through Web Audio and routed into the recorder at the
+same time.
 A silent recording clock starts with the video so speech stays synchronized
 even when the first fingertip tap happens several seconds later. Speech remains
 interruptible: the newest deliberate tap replaces anything currently playing.
@@ -175,9 +183,11 @@ TapTalk is local-first:
 - camera frames are processed on the device;
 - the hand-landmark model is bundled locally;
 - saved expressions use browser local storage;
-- speech is generated locally in the browser after the voice models download;
+- English speech is generated locally in the browser;
+- Mandarin expression text is processed locally by the desktop worker or sent
+  to TapTalk's same-origin Matcha function on the hosted prototype;
 - recordings are downloaded directly by the browser;
-- nothing is uploaded by this prototype.
+- camera frames, landmarks, saved expressions, and recordings are not uploaded.
 
 Camera access is requested only after the user selects **Start camera**.
 Microphone access is not required because TapTalk records its own generated
@@ -187,6 +197,7 @@ speech stream.
 
 ```text
 TapTalk
+├── api/                       # hosted Matcha Mandarin function
 ├── assets/
 │   ├── fonts/                 # bundled Gabarito typeface + license
 │   ├── models/                # local MediaPipe hand model
@@ -196,6 +207,7 @@ TapTalk
 ├── scripts/
 │   ├── build.mjs              # production assembly
 │   ├── patch-piper.mjs        # browser Piper compatibility patch
+│   ├── matcha-worker.py       # desktop Mandarin synthesis
 │   └── serve.mjs              # local development server
 ├── src/
 │   ├── adapters/              # camera, hand model, speech, and recording
@@ -223,7 +235,7 @@ The current prototype has **93 passing automated tests** covering:
 - duplicate and stale event rejection;
 - contact hysteresis and separation rearming;
 - landmark mapping and visibility failure states;
-- fixed Piper English and Mandarin model routing;
+- fixed Piper English and Matcha Mandarin routing;
 - interruptible rapid-tap speech;
 - recording audio inclusion and MP4 preference;
 - recorder finalization recovery;

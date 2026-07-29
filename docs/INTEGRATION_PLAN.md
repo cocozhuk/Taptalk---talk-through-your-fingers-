@@ -27,8 +27,9 @@ the application-facing interfaces below.
 
 ## Browser and deployment model
 
-- The app is served from `localhost` during development and as static files in
-  production.
+- The app is served from `localhost` during development. Production uses
+  static browser files plus a same-origin Vercel Python function for Matcha
+  Mandarin synthesis.
 - Camera access uses `navigator.mediaDevices.getUserMedia` and therefore
   requires `localhost` or another secure context.
 - Frames remain attached to an in-page video element. The integration shell
@@ -38,8 +39,10 @@ the application-facing interfaces below.
   through `MediaRecorder` as a local download.
 - Assignments and fixed legacy routing compatibility values use browser
   `localStorage`.
-- No server, account, analytics service, or network API is part of the
-  prototype architecture.
+- No account or analytics service is part of the prototype architecture.
+  Hosted Mandarin sends only the selected expression text to TapTalk's
+  same-origin synthesis function; camera frames, landmarks, configuration, and
+  recordings remain in the browser.
 
 ## Module boundaries
 
@@ -152,7 +155,7 @@ Version 1 retains fixed compatibility values for the removed preference fields:
 
 Dispatch ignores those compatibility fields. The active speech adapter maps
 English to `en_US-hfc_female-medium` and Mandarin to
-`zh_CN-huayan-medium`. Loaders must reject malformed or incomplete stored data
+Matcha `matcha-icefall-zh-baker`. Loaders must reject malformed or incomplete stored data
 and return safe defaults. Reset removes the stored record. Webcam frames and
 tracking landmarks must never enter this schema.
 
@@ -222,7 +225,8 @@ fallback experiments.
 - **Manual fallback:** static positions remain visible before the camera starts
   so the complete routing path can be tested without camera permission.
 - **Robotic voice production:** the active app exposes no picker and uses only
-  `en_US-hfc_female-medium` for English and `zh_CN-huayan-medium` for Mandarin.
+  Piper `en_US-hfc_female-medium` for English and Matcha
+  `matcha-icefall-zh-baker` for Mandarin.
   First use requires both model downloads; warm-path latency and voice
   intelligibility still require device-level qualification.
 - **Latency qualification:** instrumentation is wired, but acceptance requires
