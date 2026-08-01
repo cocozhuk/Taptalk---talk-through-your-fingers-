@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta
       name="description"
       content="TapTalk maps deliberate thumb-to-fingertip contacts to eight visible and spoken expressions."
@@ -67,24 +70,26 @@
               aria-label="TapTalk first-time guide"
               hidden
             >
-              <img
-                id="onboarding-image"
-                class="onboarding-image"
-                alt=""
-              />
-              <button
-                id="onboarding-back"
-                class="onboarding-hotspot onboarding-hotspot-back"
-                type="button"
-                aria-label="Go to the previous TapTalk guide slide"
-                hidden
-              ></button>
-              <button
-                id="onboarding-next"
-                class="onboarding-hotspot onboarding-hotspot-next"
-                type="button"
-                aria-label="Go to TapTalk guide slide 2"
-              ></button>
+              <div class="onboarding-slide-frame">
+                <img
+                  id="onboarding-image"
+                  class="onboarding-image"
+                  alt=""
+                />
+                <button
+                  id="onboarding-back"
+                  class="onboarding-hotspot onboarding-hotspot-back"
+                  type="button"
+                  aria-label="Go to the previous TapTalk guide slide"
+                  hidden
+                ></button>
+                <button
+                  id="onboarding-next"
+                  class="onboarding-hotspot onboarding-hotspot-next"
+                  type="button"
+                  aria-label="Go to TapTalk guide slide 2"
+                ></button>
+              </div>
               <p
                 id="onboarding-status"
                 class="sr-only"
@@ -139,6 +144,34 @@
               <span aria-hidden="true"></span>
               Recording locally
             </div>
+            <div class="mobile-live-controls" aria-label="Live camera controls">
+              <button
+                id="mobile-live-exit"
+                class="mobile-live-button mobile-live-exit"
+                type="button"
+              >
+                Exit camera
+              </button>
+              <div
+                id="mobile-live-camera-status"
+                class="mobile-live-status"
+                role="status"
+              >
+                Camera off
+              </div>
+              <button
+                id="mobile-live-record"
+                class="mobile-live-button mobile-live-record"
+                type="button"
+                aria-pressed="false"
+                disabled
+              >
+                Record
+              </button>
+            </div>
+            <p class="mobile-orientation-hint">
+              Your saved video matches this wide frame
+            </p>
             <div class="stage-caption">
               <span>Mirrored preview</span>
               <span id="recording-caption">Not recording</span>
@@ -171,6 +204,14 @@
         </section>
 
         <aside class="settings-panel" aria-labelledby="settings-title">
+          <div class="mobile-setup-intro">
+            <p class="eyebrow">Set up your fingertips</p>
+            <h1>What should each finger say?</h1>
+            <p>
+              Use English or Chinese. Leave any expression blank to disable
+              that fingertip.
+            </p>
+          </div>
           <div class="section-heading settings-heading">
             <div>
               <h2 id="settings-title">Fingertip words</h2>
@@ -186,6 +227,14 @@
             <div class="form-actions">
               <button class="primary-button save-button" type="submit">
                 Save words
+              </button>
+              <button
+                id="mobile-continue"
+                class="primary-button mobile-continue-button"
+                type="button"
+                disabled
+              >
+                Continue to camera
               </button>
               <button id="reset-settings" class="text-button" type="button">
                 Reset local data
@@ -249,6 +298,72 @@
           Got it · 知道了
         </button>
       </div>
+    </dialog>
+
+    <dialog
+      id="mobile-camera-choice"
+      class="mobile-camera-choice"
+      aria-labelledby="mobile-camera-choice-title"
+      aria-describedby="mobile-camera-choice-description"
+    >
+      <button
+        id="mobile-camera-choice-close"
+        class="mobile-choice-close"
+        type="button"
+        aria-label="Return to fingertip setup"
+      >
+        ×
+      </button>
+      <p class="mobile-choice-kicker">Ready when you are</p>
+      <h2 id="mobile-camera-choice-title">Start your TapTalk camera</h2>
+      <p id="mobile-camera-choice-description">
+        Choose whether to record this session. Camera processing stays on this
+        device, and recordings save directly to your iPhone.
+      </p>
+      <div class="mobile-choice-actions">
+        <button
+          id="mobile-start-camera"
+          class="secondary-button"
+          type="button"
+        >
+          Start camera
+          <small>Nothing will be recorded</small>
+        </button>
+        <button
+          id="mobile-start-recording"
+          class="primary-button"
+          type="button"
+        >
+          Start camera + record
+          <small>Save a local video when you exit</small>
+        </button>
+      </div>
+      <p class="mobile-choice-note">
+        Your browser will ask for camera permission next.
+      </p>
+    </dialog>
+
+    <dialog
+      id="mobile-voice-waiting"
+      class="mobile-voice-waiting"
+      aria-labelledby="mobile-voice-waiting-title"
+      aria-describedby="mobile-voice-waiting-description"
+    >
+      <p class="mobile-choice-kicker">Almost ready</p>
+      <h2 id="mobile-voice-waiting-title">
+        Your voices are still preparing
+      </h2>
+      <p id="mobile-voice-waiting-description">
+        TapTalk is loading English and Mandarin locally. Please wait a few
+        seconds, then tap Continue to camera again.
+      </p>
+      <button
+        id="mobile-voice-waiting-close"
+        class="primary-button mobile-voice-waiting-close"
+        type="button"
+      >
+        Okay, keep preparing
+      </button>
     </dialog>
 
     <script type="module" src="./src/main.js?v=piper-1"></script>

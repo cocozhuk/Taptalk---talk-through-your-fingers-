@@ -208,3 +208,192 @@ test("recording errors stay visible instead of being overwritten by tracking", (
 
   assert.match(view.elements.cameraMessage.textContent, /No tab audio/);
 });
+
+test("iPhone screen changes never mutate the desktop presentation", () => {
+  const desktop = Object.create(AppView.prototype);
+  desktop.interfaceMode = "desktop";
+  desktop.document = { body: { dataset: { mobileScreen: "desktop" } } };
+  desktop.setMobileScreen("live");
+  assert.equal(desktop.document.body.dataset.mobileScreen, "desktop");
+
+  const iphone = Object.create(AppView.prototype);
+  iphone.interfaceMode = "iphone";
+  iphone.document = { body: { dataset: {} } };
+  iphone.setMobileScreen("setup");
+  assert.equal(iphone.mobileScreen, "setup");
+  assert.equal(iphone.document.body.dataset.mobileScreen, "setup");
+  assert.throws(() => iphone.setMobileScreen("unknown"), /Unknown/);
+});
+
+test("mobile recording control mirrors the shared recording state", () => {
+  const classes = new Set();
+  const attributes = new Map();
+  const mobileRecord = {
+    dataset: {},
+    disabled: true,
+    textContent: "",
+    classList: {
+      toggle(name, enabled) {
+        if (enabled) {
+          classes.add(name);
+        } else {
+          classes.delete(name);
+        }
+      },
+    },
+    setAttribute(name, value) {
+      attributes.set(name, value);
+    },
+  };
+  const desktopRecord = {
+    dataset: {},
+    disabled: false,
+    textContent: "",
+    classList: mobileRecord.classList,
+    setAttribute: mobileRecord.setAttribute,
+  };
+  const view = Object.create(AppView.prototype);
+  view.cameraState = "active";
+  view.elements = {
+    cameraMessage: { textContent: "" },
+    mobileLiveRecord: mobileRecord,
+    recordToggle: desktopRecord,
+    recordingCaption: { textContent: "" },
+    recordingIndicator: { hidden: true },
+  };
+
+  view.setRecordingState("recording", "Recording locally.");
+
+  assert.equal(mobileRecord.textContent, "Stop recording");
+  assert.equal(mobileRecord.disabled, false);
+  assert.equal(attributes.get("aria-pressed"), "true");
+  assert.equal(classes.has("is-recording"), true);
+  assert.equal(view.elements.recordingIndicator.hidden, false);
+});
+
+test("rotation immediately remaps live labels from source coordinates", () => {
+  const trackedMarker = {
+    dataset: { sourceX: "0.25", sourceY: "0.4" },
+  };
+  const calls = [];
+  const view = Object.create(AppView.prototype);
+  view.elements = {
+    fingerOverlay: {
+      querySelectorAll: () => [trackedMarker],
+    },
+  };
+  view.positionMarker = (target, point) => calls.push([target, point]);
+
+  view.reflowLiveMarkers();
+
+  assert.deepEqual(calls, [
+    [trackedMarker, { x: 0.75, y: 0.4 }],
+  ]);
+});
+
+test("orientation changes update iPhone state and reflow after layout settles", () => {
+  const frames = [];
+  const reflows = [];
+  const view = Object.create(AppView.prototype);
+  view.interfaceMode = "iphone";
+  view.document = { body: { dataset: {} } };
+  view.landscapeMedia = { matches: true };
+  view.window = {
+    requestAnimationFrame(callback) {
+      frames.push(callback);
+    },
+  };
+  view.reflowLiveMarkers = () => reflows.push(true);
+
+  view.syncMobileOrientation();
+  assert.equal(view.document.body.dataset.mobileOrientation, "landscape");
+  assert.equal(frames.length, 1);
+  frames.shift()();
+  assert.equal(frames.length, 1);
+  assert.equal(reflows.length, 0);
+  frames.shift()();
+  assert.equal(reflows.length, 1);
+
+  view.landscapeMedia.matches = false;
+  view.syncMobileOrientation();
+  assert.equal(view.document.body.dataset.mobileOrientation, "portrait");
+});
+
+test("voice preparation keeps mobile Continue tappable and marked waiting", () => {
+  const attributes = new Map();
+  const mobileContinue = {
+    dataset: {},
+    disabled: true,
+    setAttribute(name, value) {
+      attributes.set(name, value);
+    },
+  };
+  const view = Object.create(AppView.prototype);
+  view.cameraState = "off";
+  view.elements = {
+    cameraMessage: { textContent: "" },
+    cameraToggle: { disabled: false },
+    mobileContinue,
+  };
+
+  view.setCameraAvailability(false, "Preparing voices…");
+
+  assert.equal(mobileContinue.disabled, false);
+  assert.equal(mobileContinue.dataset.waiting, "true");
+  assert.equal(attributes.get("aria-disabled"), "true");
+  assert.equal(view.elements.cameraMessage.textContent, "Preparing voices…");
+});
+
+test("waiting voice explanation opens as an iPhone dialog", () => {
+  let opened = false;
+  const view = Object.create(AppView.prototype);
+  view.interfaceMode = "iphone";
+  view.elements = {
+    mobileVoiceWaiting: {
+      showModal() {
+        opened = true;
+      },
+    },
+  };
+
+  view.openMobileVoiceWaiting();
+
+  assert.equal(opened, true);
+});
+
+test("voice readiness restores Continue and closes its waiting dialog", () => {
+  const attributes = new Map();
+  let closed = false;
+  const mobileContinue = {
+    dataset: { waiting: "true" },
+    disabled: false,
+    setAttribute(name, value) {
+      attributes.set(name, value);
+    },
+  };
+  const view = Object.create(AppView.prototype);
+  view.cameraState = "off";
+  view.elements = {
+    cameraMessage: { textContent: "Preparing voices…" },
+    cameraToggle: { disabled: true },
+    mobileContinue,
+    mobileVoiceWaiting: {
+      open: true,
+      close() {
+        closed = true;
+        this.open = false;
+      },
+      removeAttribute() {},
+    },
+  };
+
+  view.setCameraAvailability(true, "Voices ready.");
+
+  assert.equal(view.cameraAvailable, true);
+  assert.equal(view.elements.cameraToggle.disabled, false);
+  assert.equal(mobileContinue.disabled, false);
+  assert.equal(mobileContinue.dataset.waiting, "false");
+  assert.equal(attributes.get("aria-disabled"), "false");
+  assert.equal(closed, true);
+  assert.equal(view.elements.cameraMessage.textContent, "Voices ready.");
+});

@@ -1,6 +1,6 @@
 # TapTalk Decision Log
 
-Last updated: 2026-07-29
+Last updated: 2026-08-01
 
 This log distinguishes decisions supplied and accepted in the product baseline
 from resolutions made by Product Architecture under its delegated role.
@@ -25,6 +25,7 @@ specialist.
 | U-008 | Latency and cadence | Audible onset targets no more than 500 ms after confirmed contact. Voices remain at natural 1× speed; every newer tap may cut off unfinished speech and start its own expression without waiting. |
 | U-009 | Privacy/storage | Configuration stays on device; webcam processing is local and frames are not stored, uploaded, or retained by default. An explicit recording session composes the mirrored camera, visible fingertip labels, and locally generated speech audio into a local download; TapTalk uploads and retains no copy. |
 | U-010 | Semantic handedness | Stable user-hand finger IDs do not change when the camera preview is mirrored. |
+| U-011 | Shared macOS/iPhone web application | One codebase serves both platforms. iPhone identity selects a sequential tutorial → expression setup → explicit camera choice → orientation-adaptive live presentation; portrait centers a 16:9 recording frame and landscape may expand it. macOS keeps the released desktop workspace. iPad is outside this mobile mode, and rotation must not switch presentation logic. |
 
 ## Product Architecture resolutions
 

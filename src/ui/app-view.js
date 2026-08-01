@@ -59,8 +59,19 @@ export function setLiveMarkerVisibility(marker, visible) {
 }
 
 export class AppView {
-  constructor(documentRef = document) {
+  constructor(
+    documentRef = document,
+    { interfaceMode = "desktop" } = {},
+  ) {
     this.document = documentRef;
+    this.window = documentRef.defaultView ?? globalThis.window;
+    this.interfaceMode = interfaceMode;
+    this.document.documentElement.dataset.interfaceMode = interfaceMode;
+    if (this.document.body) {
+      this.document.body.dataset.interfaceMode = interfaceMode;
+      this.document.body.dataset.mobileScreen =
+        interfaceMode === "iphone" ? "tutorial" : "desktop";
+    }
     this.elements = {
       assignmentList: documentRef.querySelector("#assignment-list"),
       cameraIndicator: documentRef.querySelector("#camera-indicator"),
@@ -70,6 +81,28 @@ export class AppView {
       cameraToggle: documentRef.querySelector("#camera-toggle"),
       fingerOverlay: documentRef.querySelector("#finger-overlay"),
       form: documentRef.querySelector("#settings-form"),
+      mobileCameraChoice: documentRef.querySelector(
+        "#mobile-camera-choice",
+      ),
+      mobileCameraChoiceClose: documentRef.querySelector(
+        "#mobile-camera-choice-close",
+      ),
+      mobileContinue: documentRef.querySelector("#mobile-continue"),
+      mobileLiveCameraStatus: documentRef.querySelector(
+        "#mobile-live-camera-status",
+      ),
+      mobileLiveExit: documentRef.querySelector("#mobile-live-exit"),
+      mobileLiveRecord: documentRef.querySelector("#mobile-live-record"),
+      mobileStartCamera: documentRef.querySelector("#mobile-start-camera"),
+      mobileStartRecording: documentRef.querySelector(
+        "#mobile-start-recording",
+      ),
+      mobileVoiceWaiting: documentRef.querySelector(
+        "#mobile-voice-waiting",
+      ),
+      mobileVoiceWaitingClose: documentRef.querySelector(
+        "#mobile-voice-waiting-close",
+      ),
       prototypeBadge: documentRef.querySelector("#prototype-badge"),
       recordingCaption: documentRef.querySelector("#recording-caption"),
       recordingIndicator: documentRef.querySelector("#recording-indicator"),
@@ -85,6 +118,11 @@ export class AppView {
     this.cameraAvailable = true;
     this.cameraState = "off";
     this.recordingState = "idle";
+    this.mobileScreen = interfaceMode === "iphone" ? "tutorial" : "desktop";
+    this.landscapeMedia = this.window?.matchMedia?.(
+      "(orientation: landscape)",
+    );
+    this.syncMobileOrientation();
   }
 
   renderFingerMarkers() {
@@ -213,11 +251,64 @@ export class AppView {
     };
   }
 
-  bind({ onCameraToggle, onRecordingToggle, onSave, onReset }) {
+  bind({
+    onCameraToggle,
+    onRecordingToggle,
+    onSave,
+    onReset,
+    onMobileContinue = () => {},
+    onMobileCameraChoice = () => {},
+    onMobileExit = () => {},
+  }) {
     this.elements.cameraToggle.addEventListener("click", onCameraToggle);
     this.elements.recordToggle.addEventListener("click", onRecordingToggle);
     this.elements.form.addEventListener("submit", onSave);
     this.elements.reset.addEventListener("click", onReset);
+    this.elements.mobileContinue?.addEventListener("click", () => {
+      if (!this.cameraAvailable) {
+        this.openMobileVoiceWaiting();
+        return;
+      }
+      onMobileContinue();
+    });
+    this.elements.mobileStartCamera?.addEventListener("click", () =>
+      onMobileCameraChoice({ record: false }),
+    );
+    this.elements.mobileStartRecording?.addEventListener("click", () =>
+      onMobileCameraChoice({ record: true }),
+    );
+    this.elements.mobileCameraChoiceClose?.addEventListener(
+      "click",
+      () => this.closeMobileCameraChoice(),
+    );
+    this.elements.mobileCameraChoice?.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      this.closeMobileCameraChoice();
+    });
+    this.elements.mobileVoiceWaitingClose?.addEventListener(
+      "click",
+      () => this.closeMobileVoiceWaiting(),
+    );
+    this.elements.mobileVoiceWaiting?.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      this.closeMobileVoiceWaiting();
+    });
+    this.elements.mobileLiveExit?.addEventListener("click", onMobileExit);
+    this.elements.mobileLiveRecord?.addEventListener(
+      "click",
+      onRecordingToggle,
+    );
+    const syncOrientation = () => this.syncMobileOrientation();
+    if (typeof this.landscapeMedia?.addEventListener === "function") {
+      this.landscapeMedia.addEventListener("change", syncOrientation);
+    } else {
+      this.landscapeMedia?.addListener?.(syncOrientation);
+    }
+    this.window?.addEventListener?.("orientationchange", () => {
+      this.window?.requestAnimationFrame?.(() =>
+        this.syncMobileOrientation(),
+      );
+    });
   }
 
   setCameraState(state, message) {
@@ -239,6 +330,21 @@ export class AppView {
     this.elements.recordToggle.disabled =
       this.recordingState === "saving" ||
       (this.recordingState !== "recording" && !isActive);
+    if (this.elements.mobileLiveCameraStatus) {
+      this.elements.mobileLiveCameraStatus.dataset.state = state;
+      this.elements.mobileLiveCameraStatus.textContent = isActive
+        ? "Camera live"
+        : state === "starting"
+          ? "Starting camera…"
+          : state === "error"
+            ? "Camera error"
+            : "Camera off";
+    }
+    if (this.elements.mobileLiveRecord) {
+      this.elements.mobileLiveRecord.disabled =
+        this.recordingState === "saving" ||
+        (this.recordingState !== "recording" && !isActive);
+    }
     this.elements.cameraMessage.textContent = message;
   }
 
@@ -246,6 +352,19 @@ export class AppView {
     this.cameraAvailable = Boolean(available);
     this.elements.cameraToggle.disabled =
       !this.cameraAvailable && this.cameraState !== "active";
+    if (this.elements.mobileContinue) {
+      this.elements.mobileContinue.disabled = false;
+      this.elements.mobileContinue.dataset.waiting = String(
+        !this.cameraAvailable,
+      );
+      this.elements.mobileContinue.setAttribute(
+        "aria-disabled",
+        String(!this.cameraAvailable),
+      );
+    }
+    if (this.cameraAvailable) {
+      this.closeMobileVoiceWaiting();
+    }
     if (message) {
       this.elements.cameraMessage.textContent = message;
     }
@@ -276,6 +395,29 @@ export class AppView {
     this.elements.recordingCaption.textContent = isRecording
       ? "Recording locally"
       : "Not recording";
+    if (this.elements.mobileLiveRecord) {
+      this.elements.mobileLiveRecord.dataset.state = state;
+      this.elements.mobileLiveRecord.classList.toggle(
+        "is-recording",
+        isRecording,
+      );
+      this.elements.mobileLiveRecord.setAttribute(
+        "aria-pressed",
+        String(isRecording),
+      );
+      this.elements.mobileLiveRecord.textContent =
+        state === "starting"
+          ? "Starting…"
+          : state === "saving"
+            ? "Saving…"
+            : isRecording
+              ? "Stop recording"
+              : "Record";
+      this.elements.mobileLiveRecord.disabled =
+        state === "starting" ||
+        state === "saving" ||
+        (!isRecording && this.cameraState !== "active");
+    }
     if (message) {
       this.elements.cameraMessage.textContent = message;
     }
@@ -403,6 +545,8 @@ export class AppView {
     const videoHeight = this.elements.cameraPreview?.videoHeight;
     let x = 1 - point.x;
     let y = point.y;
+    marker.dataset.sourceX = String(x);
+    marker.dataset.sourceY = String(y);
 
     // The camera uses object-fit: cover. Map MediaPipe's source-video
     // coordinates through the same crop so dots stay on the visible tips.
@@ -562,6 +706,149 @@ export class AppView {
 
   activeFingerCount() {
     return this.enabledFingerIds?.size ?? FINGER_IDS.length;
+  }
+
+  currentCameraMessage() {
+    return this.elements.cameraMessage.textContent;
+  }
+
+  isIPhoneMode() {
+    return this.interfaceMode === "iphone";
+  }
+
+  isMobileLandscape() {
+    if (typeof this.landscapeMedia?.matches === "boolean") {
+      return this.landscapeMedia.matches;
+    }
+    return Number(this.window?.innerWidth) > Number(this.window?.innerHeight);
+  }
+
+  syncMobileOrientation() {
+    if (!this.isIPhoneMode() || !this.document.body) {
+      return;
+    }
+    const landscape = this.isMobileLandscape();
+    this.document.body.dataset.mobileOrientation = landscape
+      ? "landscape"
+      : "portrait";
+    const refresh = () => this.reflowLiveMarkers();
+    if (typeof this.window?.requestAnimationFrame === "function") {
+      this.window.requestAnimationFrame(() =>
+        this.window.requestAnimationFrame(refresh),
+      );
+    }
+  }
+
+  reflowLiveMarkers() {
+    const markers = this.elements?.fingerOverlay?.querySelectorAll?.(
+      ".finger-marker",
+    );
+    for (const marker of markers ?? []) {
+      const sourceX = Number.parseFloat(marker.dataset.sourceX);
+      const sourceY = Number.parseFloat(marker.dataset.sourceY);
+      if (Number.isFinite(sourceX) && Number.isFinite(sourceY)) {
+        this.positionMarker(marker, { x: 1 - sourceX, y: sourceY });
+      }
+    }
+  }
+
+  setMobileScreen(screen) {
+    if (!this.isIPhoneMode()) {
+      return;
+    }
+    if (!["tutorial", "setup", "live"].includes(screen)) {
+      throw new TypeError(`Unknown TapTalk mobile screen: ${screen}`);
+    }
+    this.mobileScreen = screen;
+    this.document.body.dataset.mobileScreen = screen;
+  }
+
+  openMobileCameraChoice() {
+    if (!this.isIPhoneMode()) {
+      return;
+    }
+    this.setMobileChoiceBusy(false);
+    if (typeof this.elements.mobileCameraChoice?.showModal === "function") {
+      this.elements.mobileCameraChoice.showModal();
+    } else {
+      this.elements.mobileCameraChoice?.setAttribute("open", "");
+    }
+  }
+
+  closeMobileCameraChoice() {
+    if (
+      this.elements.mobileCameraChoice?.open &&
+      typeof this.elements.mobileCameraChoice.close === "function"
+    ) {
+      this.elements.mobileCameraChoice.close();
+    } else {
+      this.elements.mobileCameraChoice?.removeAttribute("open");
+    }
+  }
+
+  openMobileVoiceWaiting() {
+    if (!this.isIPhoneMode()) {
+      return;
+    }
+    if (typeof this.elements.mobileVoiceWaiting?.showModal === "function") {
+      this.elements.mobileVoiceWaiting.showModal();
+    } else {
+      this.elements.mobileVoiceWaiting?.setAttribute("open", "");
+    }
+  }
+
+  closeMobileVoiceWaiting() {
+    if (
+      this.elements.mobileVoiceWaiting?.open &&
+      typeof this.elements.mobileVoiceWaiting.close === "function"
+    ) {
+      this.elements.mobileVoiceWaiting.close();
+    } else {
+      this.elements.mobileVoiceWaiting?.removeAttribute("open");
+    }
+  }
+
+  setMobileChoiceBusy(busy) {
+    for (const element of [
+      this.elements.mobileStartCamera,
+      this.elements.mobileStartRecording,
+      this.elements.mobileCameraChoiceClose,
+    ]) {
+      if (element) {
+        element.disabled = Boolean(busy);
+      }
+    }
+  }
+
+  setMobileLaunchBusy(busy) {
+    if (!this.elements.mobileContinue) {
+      return;
+    }
+    this.elements.mobileContinue.textContent = busy
+      ? "Starting camera…"
+      : "Continue to camera";
+    this.elements.mobileContinue.disabled = Boolean(busy);
+    this.elements.mobileContinue.dataset.waiting = String(
+      !this.cameraAvailable,
+    );
+    this.elements.mobileContinue.setAttribute(
+      "aria-disabled",
+      String(!this.cameraAvailable),
+    );
+  }
+
+  setMobileLiveBusy(busy) {
+    if (this.elements.mobileLiveExit) {
+      this.elements.mobileLiveExit.disabled = Boolean(busy);
+    }
+    if (this.elements.mobileLiveRecord) {
+      this.elements.mobileLiveRecord.disabled =
+        Boolean(busy) ||
+        this.recordingState === "starting" ||
+        this.recordingState === "saving" ||
+        (this.recordingState !== "recording" &&
+          this.cameraState !== "active");
+    }
   }
 
   thumbMarker(hand) {

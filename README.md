@@ -6,11 +6,13 @@
   [![First prototype](https://img.shields.io/badge/status-first_prototype-ff91c8?style=flat-square&labelColor=17264a)](#prototype-status)
   [![Local first](https://img.shields.io/badge/privacy-local_first-a8dc34?style=flat-square&labelColor=17264a)](#privacy)
   [![English + 中文](https://img.shields.io/badge/languages-English_%2B_中文-80d8f7?style=flat-square&labelColor=17264a)](#the-product-rules)
-  [![93 tests](https://img.shields.io/badge/tests-93_passing-a514ff?style=flat-square&labelColor=17264a)](#testing)
+  [![130 tests](https://img.shields.io/badge/tests-130_passing-a514ff?style=flat-square&labelColor=17264a)](#testing)
 
   **A camera-based communication interface that lets you talk through deliberate fingertip taps.**
 
   *Your hands become eight tiny, editable speech buttons.* ✦
+
+  [Open the live TapTalk prototype](https://taptalk-talk-through-your-fingers.vercel.app)
 </div>
 
 ---
@@ -45,7 +47,8 @@ audible.
 
 ### Requirements
 
-- macOS with Google Chrome for the fully supported prototype;
+- macOS with Google Chrome for the desktop experience, or an iPhone with
+  Safari for the automatic iPhone web experience;
 - Node.js 20 or newer;
 - Python 3.9 or newer for the local Matcha Mandarin worker;
 - an internet connection during initial dependency setup and the first English
@@ -67,10 +70,16 @@ Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
 TapTalk intentionally binds to `127.0.0.1`; the development server is not
 exposed to the local network.
 
+For opt-in testing from a physical iPhone on the same trusted Wi-Fi network,
+follow [`docs/IPHONE_LOCAL_TESTING.md`](docs/IPHONE_LOCAL_TESTING.md). The
+separate HTTPS command requires explicit certificate and key paths; it does not
+change the safe `npm run dev` default.
+
 ### Useful commands
 
 ```sh
 npm run dev      # start the local TapTalk server
+npm run dev:iphone -- --cert <path> --key <path> # opt-in iPhone HTTPS testing
 npm test         # run the automated test suite
 npm run build    # assemble the static production files in dist/
 npm run check    # run tests, then build
@@ -91,6 +100,8 @@ This repository contains the complete first working prototype:
 - local MP4 recording with fingertip labels and TapTalk speech included;
 - local configuration storage and reset;
 - camera-free mouse/touch and keyboard fallbacks;
+- one shared web application with a desktop workspace and an automatic,
+  sequential iPhone presentation;
 - a single-page, dreamy retro-tech interface.
 
 The red fingertip dots and electric blue, green, and violet labels are designed
@@ -99,14 +110,17 @@ The sidebar groups the controls as **LEFT HAND 1–4** and **RIGHT HAND 1–4**.
 
 ## How to use it
 
-1. Start the local server and open TapTalk.
-2. Select **Start camera** and allow camera access.
-3. Face one or both palms toward the camera with the wrist visible.
-4. Edit the eight expressions in the right sidebar and select **Save words**.
-5. Touch any non-thumb fingertip to the thumb on the same hand.
-6. Separate the finger before activating that same expression again.
-7. Select **Start recording** to save the mirrored video, fingertip labels, and
-   TapTalk speech together.
+On macOS, edit the eight expressions in the sidebar, save them, then select
+**Start camera**. On iPhone, complete the same tutorial, configure the eight
+expressions, and select **Continue**. TapTalk then asks whether to start the
+camera alone or start the camera and record. In portrait, the live iPhone view
+shows a centered 16:9 camera frame matching the saved video. If the user rotates
+the phone, the camera expands into landscape and fingertip labels reflow with
+the new direction.
+
+In either presentation, face one or both palms toward the camera with the wrist
+visible. Touch any non-thumb fingertip to the thumb on the same hand, then
+separate it before activating that expression again.
 
 When taps happen rapidly, TapTalk does not build a long speech queue. A new tap
 interrupts the current phrase and starts the newest one. This keeps the audio
@@ -228,7 +242,7 @@ acceptance coverage.
 
 ## Testing
 
-The current prototype has **93 passing automated tests** covering:
+The current prototype has **130 passing automated tests** covering:
 
 - expression and configuration validation;
 - assignment persistence and migration;
@@ -240,7 +254,9 @@ The current prototype has **93 passing automated tests** covering:
 - interruptible rapid-tap speech;
 - recording audio inclusion and MP4 preference;
 - recorder finalization recovery;
-- fingertip overlay and tracking feedback.
+- fingertip overlay and tracking feedback;
+- stable iPhone-versus-desktop interface selection;
+- iPhone setup, camera-choice, recording, failure, and exit lifecycles.
 
 Run everything before a release:
 
@@ -251,8 +267,10 @@ npm run check
 ## Prototype status
 
 TapTalk is a first prototype, not a medical device or a finished accessibility
-product. It currently works best on macOS in good, even lighting with the palm
-and wrist clearly visible.
+product. The desktop path currently works best on macOS. The iPhone web path is
+implemented, locally verified, and smoke-tested in physical iPhone Safari. A
+broader iPhone and iOS version matrix is still needed. In either case, use good,
+even lighting with the palm and wrist clearly visible.
 
 Known areas for future exploration:
 

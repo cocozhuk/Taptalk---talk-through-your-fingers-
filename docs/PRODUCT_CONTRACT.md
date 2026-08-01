@@ -1,6 +1,6 @@
 # TapTalk Product Contract
 
-Status: architecture-resolved contract for the first prototype (updated 2026-07-29)
+Status: architecture-resolved contract for the first prototype (updated 2026-08-01)
 
 This document is the shared source of truth for every TapTalk specialist. A
 specialist may propose a change, but only the Product Architecture task owns
@@ -24,6 +24,28 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 5. A compatible robotic voice speaks the expression.
 6. The fingertip must separate from the thumb before that finger can activate
    again.
+
+## Platform presentation
+
+TapTalk remains one web application and one behavioral implementation.
+
+- macOS keeps the released desktop workspace, including its existing layout
+  and controls.
+- iPhone uses the same tutorial, assignments, validation, voices, hand
+  tracking, activation, storage, and recording implementations in a sequential
+  presentation: tutorial, eight-expression setup, camera choice, then live
+  camera.
+- The iPhone camera choice must appear before camera permission and must offer
+  distinct **Start camera** and **Start camera + record** actions.
+- In portrait, the live iPhone presentation centers a 16:9 camera frame that
+  matches the saved recording crop, with essential controls placed in the
+  surrounding viewport. Rotation remains optional: landscape expands the live
+  camera, continues to permit recording, and must remap fingertip labels into
+  the phone's current reading direction. Rotation does not change the chosen
+  interface mode.
+- iPad and non-iPhone mobile devices do not enter the iPhone presentation.
+- An empty setup field keeps its existing meaning: that finger is completely
+  disabled.
 
 ## Non-negotiable product boundaries
 

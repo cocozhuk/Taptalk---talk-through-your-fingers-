@@ -1,15 +1,21 @@
 import { createReadStream } from "node:fs";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { extname, join, resolve, sep } from "node:path";
-import { createServer } from "node:http";
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { MatchaWorkerClient } from "./matcha-worker-client.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const host = "127.0.0.1";
+const iphoneMode = process.argv.slice(2).includes("--iphone");
+const host = iphoneMode ? "0.0.0.0" : "127.0.0.1";
 const requestedPort = Number.parseInt(process.env.TAPTALK_PORT ?? "4173", 10);
 const port = Number.isSafeInteger(requestedPort) ? requestedPort : 4173;
+const tlsOptions = iphoneMode
+  ? await loadIphoneTlsOptions(process.argv.slice(2))
+  : null;
+const protocol = tlsOptions ? "https" : "http";
 const speechCache = new Map();
 const matchaSpeechCache = new Map();
 const matchaWorker = new MatchaWorkerClient();
@@ -37,8 +43,9 @@ const contentTypes = {
   ".wasm": "application/wasm",
 };
 
-const server = createServer(async (request, response) => {
-  const url = new URL(request.url ?? "/", `http://${host}:${port}`);
+const createServer = tlsOptions ? createHttpsServer : createHttpServer;
+const server = createServer(tlsOptions ?? {}, async (request, response) => {
+  const url = new URL(request.url ?? "/", `${protocol}://${host}:${port}`);
   if (url.pathname === "/api/matcha-speech") {
     await serveMatchaSpeech(url, response);
     return;
@@ -115,6 +122,11 @@ async function serveMatchaSpeech(url, response) {
 }
 
 server.listen(port, host, () => {
+  if (iphoneMode) {
+    console.log(`TapTalk iPhone test server: https://<mac-lan-ip>:${port}`);
+    console.log("LAN access is enabled for this process; stop it after testing.");
+    return;
+  }
   console.log(`TapTalk development server: http://${host}:${port}`);
 });
 
@@ -180,6 +192,48 @@ function resolvePublicPath(pathname) {
     return null;
   }
   return candidate;
+}
+
+async function loadIphoneTlsOptions(argumentsList) {
+  const allowedArguments = new Set(["--iphone", "--cert", "--key"]);
+  let certPath = "";
+  let keyPath = "";
+
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const argument = argumentsList[index];
+    if (!allowedArguments.has(argument)) {
+      throw new Error(`Unknown development-server option: ${argument}`);
+    }
+    if (argument === "--iphone") {
+      continue;
+    }
+
+    const value = argumentsList[index + 1];
+    if (!value || value.startsWith("--")) {
+      throw new Error(`${argument} requires a certificate file path`);
+    }
+    if (argument === "--cert") {
+      certPath = value;
+    } else {
+      keyPath = value;
+    }
+    index += 1;
+  }
+
+  if (!certPath || !keyPath) {
+    throw new Error(
+      "iPhone HTTPS mode requires --cert <path> and --key <path>. See docs/IPHONE_LOCAL_TESTING.md.",
+    );
+  }
+
+  try {
+    return {
+      cert: await readFile(resolve(certPath)),
+      key: await readFile(resolve(keyPath)),
+    };
+  } catch (error) {
+    throw new Error(`Unable to read the iPhone HTTPS certificate or key: ${error.message}`);
+  }
 }
 
 async function serveSpeech(url, response) {

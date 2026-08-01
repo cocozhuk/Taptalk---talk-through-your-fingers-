@@ -39,6 +39,44 @@ function isVisibleMarker(marker, computedStyle) {
   );
 }
 
+export function projectSourcePointToRecording(
+  point,
+  sourceWidth,
+  sourceHeight,
+  targetWidth,
+  targetHeight,
+) {
+  if (
+    !Number.isFinite(point?.x) ||
+    !Number.isFinite(point?.y) ||
+    !(sourceWidth > 0) ||
+    !(sourceHeight > 0) ||
+    !(targetWidth > 0) ||
+    !(targetHeight > 0)
+  ) {
+    return null;
+  }
+
+  const sourceRatio = sourceWidth / sourceHeight;
+  const targetRatio = targetWidth / targetHeight;
+  let cropX = 0;
+  let cropY = 0;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+  if (sourceRatio > targetRatio) {
+    cropWidth = sourceHeight * targetRatio;
+    cropX = (sourceWidth - cropWidth) / 2;
+  } else if (sourceRatio < targetRatio) {
+    cropHeight = sourceWidth / targetRatio;
+    cropY = (sourceHeight - cropHeight) / 2;
+  }
+
+  return {
+    x: ((point.x * sourceWidth - cropX) / cropWidth) * targetWidth,
+    y: ((point.y * sourceHeight - cropY) / cropHeight) * targetHeight,
+  };
+}
+
 export class BrowserRecorder {
   constructor({
     MediaRecorder = globalThis.MediaRecorder,
@@ -209,18 +247,31 @@ export class BrowserRecorder {
       if (!isVisibleMarker(marker, computedStyle)) {
         continue;
       }
+      const sourcePoint = projectSourcePointToRecording(
+        {
+          x: Number.parseFloat(marker.dataset.sourceX),
+          y: Number.parseFloat(marker.dataset.sourceY),
+        },
+        this.videoElement.videoWidth,
+        this.videoElement.videoHeight,
+        width,
+        height,
+      );
       const xPercent = Number.parseFloat(
         marker.style.getPropertyValue("--marker-x"),
       );
       const yPercent = Number.parseFloat(
         marker.style.getPropertyValue("--marker-y"),
       );
-      if (!Number.isFinite(xPercent) || !Number.isFinite(yPercent)) {
+      if (
+        !sourcePoint &&
+        (!Number.isFinite(xPercent) || !Number.isFinite(yPercent))
+      ) {
         continue;
       }
 
-      const x = (xPercent / 100) * width;
-      const y = (yPercent / 100) * height;
+      const x = sourcePoint?.x ?? (xPercent / 100) * width;
+      const y = sourcePoint?.y ?? (yPercent / 100) * height;
       const active = marker.classList.contains("is-active");
       const approaching =
         marker.dataset.trackingState === "approaching" ||

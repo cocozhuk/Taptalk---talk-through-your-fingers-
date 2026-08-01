@@ -61,6 +61,35 @@ upload, or additional identity is shown.
 
 ## Information architecture
 
+### Implemented iPhone presentation
+
+The released desktop information architecture remains unchanged. On an
+iPhone, the same application renders a sequential presentation instead:
+
+```text
+Tutorial → 8-expression setup → Camera choice → Viewport-sized live camera
+```
+
+The setup preserves all eight semantic finger labels and allows blank fields
+to disable fingers. **Continue** validates, saves, and prepares the existing
+English and Mandarin voices before opening a modal with distinct **Start
+camera** and **Start camera + record** actions. Camera permission is not
+requested before either action. Portrait centers a 16:9 live camera frame that
+matches the recording output, leaving room around it for the essential session
+controls. Rotation remains optional; landscape expands the live camera and
+keeps recording available. Fingertip labels must remap and remain readable in
+the phone's current direction. Rotation never switches to the desktop
+interface. iPad remains on the desktop presentation.
+
+While voices are still preparing, **Continue** retains a waiting appearance but
+remains tappable. Tapping it opens a short explanation that English and
+Mandarin are loading locally and asks the user to wait a few seconds; it must
+not fail silently or appear broken.
+
+This iPhone addendum supersedes the generic narrow-layout guidance below where
+the two conflict. It changes presentation only, not gesture, voice, tracking,
+storage, recording, or validation behavior.
+
 ```mermaid
 flowchart TD
     Start["App starts"] --> Config{"Onboarding complete?"}

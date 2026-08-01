@@ -1,9 +1,9 @@
 # TapTalk Prototype Release Readiness
 
-Status: first local and hosted prototype implemented; ready for controlled
-macOS + Chrome testing
+Status: desktop and shared-code iPhone web prototype approved for production
+release
 
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 
 ## Verified in the current prototype
 
@@ -37,8 +37,14 @@ Last updated: 2026-07-30
 - The manual press-and-hold harness suppresses repeated activation until
   release, works with pointer or keyboard input, and remains a fallback.
 - Latency instrumentation reports sample count, median, and 95th percentile.
-- The automated regression suite contains 93 passing tests and the production
+- The automated regression suite contains 130 passing tests and the production
   build completes successfully.
+- One codebase now selects a stable iPhone presentation from device identity
+  while preserving the macOS desktop workspace and excluding iPad.
+- The iPhone flow separates tutorial, eight-expression setup, camera choice,
+  and an orientation-adaptive live camera. Portrait shows the recorder's 16:9
+  frame; landscape expands the camera and remaps labels. Camera permission
+  occurs only after an explicit camera-only or camera-and-record choice.
 
 ## Awaiting specialist implementation or evidence
 
@@ -54,6 +60,7 @@ Last updated: 2026-07-30
 | Complete recovery/calibration UX | Basic camera errors only | Interface Design and QA review |
 | Accessibility acceptance | Basic semantic/keyboard/reduced-motion support | QA accessibility audit |
 | Privacy acceptance | Architecture review only | QA network/storage/runtime verification |
+| iPhone Safari flow | Automated, local responsive, and physical smoke QA complete | Broader iPhone and iOS version matrix |
 
 ## Known limitations
 
@@ -76,6 +83,9 @@ Last updated: 2026-07-30
 
 - Run first-use tests from an empty browser cache on supported macOS + Chrome
   devices.
+- Repeat the physical Safari flow across a broader iPhone and iOS version
+  matrix, covering both camera choices, rotation, voice playback, live tracking,
+  Exit, and a saved recording.
 - Record physical tap accuracy, false activations, audible latency, and
   recording synchronization across representative lighting and cameras.
 - Complete a focused accessibility and privacy audit before making broader

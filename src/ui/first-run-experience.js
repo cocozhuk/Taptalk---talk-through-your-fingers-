@@ -33,11 +33,13 @@ export class FirstRunExperience {
     schedule = (callback, delay) => globalThis.setTimeout(callback, delay),
     cancelSchedule = (timerId) => globalThis.clearTimeout(timerId),
     onCameraAvailabilityChange = () => {},
+    onGuideCompletionChange = () => {},
   } = {}) {
     this.storage = storage;
     this.schedule = schedule;
     this.cancelSchedule = cancelSchedule;
     this.onCameraAvailabilityChange = onCameraAvailabilityChange;
+    this.onGuideCompletionChange = onGuideCompletionChange;
     this.elements = {
       guide: documentRef.querySelector("#onboarding-guide"),
       guideBack: documentRef.querySelector("#onboarding-back"),
@@ -61,6 +63,7 @@ export class FirstRunExperience {
 
   start() {
     this.elements.stage?.classList.add("is-onboarding");
+    this.onGuideCompletionChange(this.guideComplete);
     this.onCameraAvailabilityChange(
       false,
       this.guideComplete
@@ -159,6 +162,13 @@ export class FirstRunExperience {
     }
   }
 
+  hideForLocalPreview() {
+    this.unlocked = true;
+    this.elements.guide.hidden = true;
+    this.elements.voice.hidden = true;
+    this.elements.stage?.classList.remove("is-onboarding");
+  }
+
   bind() {
     this.elements.guideBack.addEventListener(
       "click",
@@ -201,6 +211,7 @@ export class FirstRunExperience {
     } catch {
       // The guide can finish even when browser storage is unavailable.
     }
+    this.onGuideCompletionChange(true);
     this.elements.guide.hidden = true;
     if (this.voiceReady) {
       this.showReadyThenUnlock();

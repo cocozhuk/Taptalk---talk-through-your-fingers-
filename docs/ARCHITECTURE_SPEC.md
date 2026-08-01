@@ -578,6 +578,16 @@ validator and be documented by Integration before release.
 - Show stable validation messages for the codes in section 2.
 - Expose no voice preference controls; communicate the two locked
   language-specific defaults where necessary.
+- Select the presentation once from stable device identity: iPhone uses the
+  sequential mobile flow, while macOS, iPad, and unknown devices retain the
+  desktop presentation. Viewport size and rotation must not change this mode.
+- Reuse the same state, adapters, assignment editor, and live camera pipeline
+  in both presentations. The iPhone setup must finish validation and voice
+  preparation before opening its explicit camera/recording choice.
+- Center a 16:9 live stage in the iPhone portrait viewport so its composition
+  matches the recorder's fixed 16:9 crop. Landscape may expand the live stage;
+  every orientation change must immediately remap live landmark labels from
+  their source coordinates and keep text aligned with the current screen.
 
 ### Robotic Voices
 

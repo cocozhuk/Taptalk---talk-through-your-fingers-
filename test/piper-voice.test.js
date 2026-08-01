@@ -218,6 +218,21 @@ test("starts continuous silent audio before recording to keep video synchronized
   assert.equal(clockSource.disconnected, true);
 });
 
+test("unlocks iPhone speech audio without starting a recording clock", async () => {
+  const port = new PiperVoicePort({
+    TtsSession: FakeTtsSession,
+    AudioContext: FakeAudioContext,
+    fetchImpl: fakeFetch,
+  });
+  port.audioContext.state = "suspended";
+
+  await port.unlock();
+
+  assert.equal(port.audioContext.state, "running");
+  assert.equal(port.audioContext.constantSources.length, 0);
+  assert.equal(port.recordingClockSource, null);
+});
+
 test("rapid replacement interrupts active local playback", async () => {
   FakeTtsSession.reset();
   const port = new PiperVoicePort({

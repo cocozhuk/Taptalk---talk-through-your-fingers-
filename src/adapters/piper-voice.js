@@ -72,15 +72,19 @@ export class PiperVoicePort {
     return this.recordingDestination.stream;
   }
 
-  async prepareRecording() {
+  async unlock() {
     if (this.audioContext.state !== "running") {
       await this.audioContext.resume();
     }
     if (this.audioContext.state !== "running") {
       throw new Error(
-        "TapTalk audio is locked. Tap the page once and try recording again.",
+        "TapTalk audio is locked. Tap the page once and try again.",
       );
     }
+  }
+
+  async prepareRecording() {
+    await this.unlock();
     if (this.recordingClockSource) {
       return;
     }

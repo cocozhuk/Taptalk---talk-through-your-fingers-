@@ -52,6 +52,7 @@ function setup({ completed = false } = {}) {
     completed ? [["taptalk.onboarding.v1", "completed"]] : [],
   );
   const availability = [];
+  const guideCompletion = [];
   const scheduled = [];
   const experience = new FirstRunExperience({
     documentRef: {
@@ -68,11 +69,14 @@ function setup({ completed = false } = {}) {
     cancelSchedule() {},
     onCameraAvailabilityChange: (available, message) =>
       availability.push({ available, message }),
+    onGuideCompletionChange: (complete) =>
+      guideCompletion.push(complete),
   });
   return {
     availability,
     elements,
     experience,
+    guideCompletion,
     scheduled,
     stored,
   };
@@ -137,4 +141,17 @@ test("a returning browser skips slides and sees live voice progress", () => {
     "70%",
   );
   assert.equal(setupResult.availability[0].available, false);
+});
+
+test("first-visit guide completion exposes setup without waiting for voices", () => {
+  const setupResult = setup();
+  setupResult.experience.start();
+  assert.deepEqual(setupResult.guideCompletion, [false]);
+
+  setupResult.elements.get("#onboarding-next").click();
+  setupResult.elements.get("#onboarding-next").click();
+  setupResult.elements.get("#onboarding-next").click();
+
+  assert.deepEqual(setupResult.guideCompletion, [false, true]);
+  assert.equal(setupResult.experience.voiceReady, false);
 });
