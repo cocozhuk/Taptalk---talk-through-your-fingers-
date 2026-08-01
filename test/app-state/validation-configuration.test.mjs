@@ -45,8 +45,11 @@ test("counts Mandarin by Han code point and enforces the five-character limit", 
   );
 });
 
-test("rejects empty, mixed, and provisionally ambiguous expressions", () => {
-  assert.equal(validateExpression(" \t ").error.code, "empty");
+test("accepts empty and rejects mixed or provisionally ambiguous expressions", () => {
+  assert.deepEqual(validateExpression(" \t "), {
+    ok: true,
+    value: { text: "", language: "en", unitCount: 0 },
+  });
   assert.equal(validateExpression("hello你好").error.code, "mixed_language");
 
   for (const expression of [
@@ -101,6 +104,12 @@ test("updates an assignment immutably and derives its language from text", () =>
   });
   assert.deepEqual(original.assignments.left_index, {
     text: "Yes",
+    language: "en",
+  });
+
+  const disabled = updateAssignment(original, "left_index", "  ");
+  assert.deepEqual(disabled.assignment, {
+    text: "",
     language: "en",
   });
 

@@ -112,6 +112,9 @@ export class PiperVoicePort {
       ["zh", []],
     ]);
     for (const assignment of Object.values(assignments)) {
+      if (!assignment?.text?.trim()) {
+        continue;
+      }
       const voiceId = fixedVoiceIdFor(assignment.language);
       grouped
         .get(assignment.language)

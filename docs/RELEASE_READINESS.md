@@ -14,8 +14,8 @@ Last updated: 2026-07-30
   User-initiated recording saves the mirrored camera, fingertip overlays, and
   locally generated speech audio as a local browser download, with
   visible recording state.
-- Configuration contains exactly eight assignments and persists only through
-  browser local storage.
+- Configuration contains exactly eight assignment slots, allows zero to eight
+  active fingers, and persists only through browser local storage.
 - Reset removes the persisted configuration and restores safe defaults.
 - English and Mandarin expression rules reject mixed or ambiguous input.
 - The UI exposes no voice picker. English uses Piper

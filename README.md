@@ -82,7 +82,7 @@ This repository contains the complete first working prototype:
 
 - real-time local webcam preview;
 - on-device MediaPipe tracking for up to two hands;
-- eight editable fingertip assignments;
+- eight editable fingertip slots, each independently enabled or disabled;
 - labels that follow the detected fingertips;
 - thumb-to-fingertip contact detection with separation rearming;
 - English and Mandarin language detection from the expression itself;
@@ -119,8 +119,8 @@ These boundaries are intentional parts of TapTalk:
 | Rule | TapTalk behavior |
 | --- | --- |
 | Finger inputs | Exactly eight: four non-thumb fingers per hand |
-| Assignment | One editable expression per finger |
-| Expression length | Up to five English words or five Chinese characters |
+| Assignment | One editable expression per finger, or blank to disable it |
+| Expression length | Active expressions use up to five English words or five Chinese characters |
 | Language per finger | One language inside each assignment |
 | Mixed setup | English and Chinese assignments can coexist across fingers |
 | Spoken languages | English and Mandarin Chinese only |
@@ -136,8 +136,9 @@ These boundaries are intentional parts of TapTalk:
 ### Fingertip tracking
 
 MediaPipe Hand Landmarker runs in the browser and supplies hand landmarks.
-TapTalk maps the index, middle, ring, and pinky fingertips on each hand to the
-eight assignments. Contact distances are normalized against palm scale so the
+TapTalk maps the index, middle, ring, and pinky fingertips on each hand to eight
+configurable slots. A blank slot is disabled: its marker stays hidden and its
+contacts are ignored. Contact distances are normalized against palm scale so the
 same gesture works at different distances from the camera.
 
 Short confirmation and separation hysteresis reduce accidental triggers from
@@ -263,8 +264,8 @@ Known areas for future exploration:
 - an installable offline application;
 - performance profiling on lower-power devices.
 
-The core vocabulary will stay intentionally compact: eight fingers, eight short
-expressions, English and Mandarin only.
+The core vocabulary will stay intentionally compact: up to eight active
+fingers, short expressions, English and Mandarin only.
 
 ---
 

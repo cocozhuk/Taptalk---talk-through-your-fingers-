@@ -284,7 +284,7 @@ view.bind({
     view.renderConfig(config);
     warmVoiceAssignments();
     view.setSettingsStatus(
-      "Saved on this device. Nothing was uploaded.",
+      `Saved on this device. ${view.activeFingerCount()} fingertip controls active. Nothing was uploaded.`,
       "success",
     );
   },

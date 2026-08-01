@@ -51,23 +51,23 @@ export function detectExpressionLanguage(text) {
 export function validateExpression(text, language) {
   const normalizedText = typeof text === "string" ? text.trim() : "";
 
+  if (!normalizedText) {
+    return {
+      valid: true,
+      normalizedText: "",
+      units: 0,
+      disabled: true,
+      error: "",
+    };
+  }
+
   if (!Object.hasOwn(LANGUAGES, language)) {
     return {
       valid: false,
       normalizedText,
       units: 0,
-      error: normalizedText
-        ? "Use only English words or Chinese characters."
-        : "Enter an expression.",
-    };
-  }
-
-  if (!normalizedText) {
-    return {
-      valid: false,
-      normalizedText,
-      units: 0,
-      error: "Enter an expression.",
+      disabled: false,
+      error: "Use only English words or Chinese characters.",
     };
   }
 
@@ -158,7 +158,9 @@ export function normalizeConfig(config) {
     normalized.assignments[fingerId] = {
       text: validateExpression(assignment.text, assignment.language)
         .normalizedText,
-      language: assignment.language,
+      language: Object.hasOwn(LANGUAGES, assignment.language)
+        ? assignment.language
+        : "en",
     };
   }
   normalized.voicePreferences = {

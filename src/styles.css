@@ -909,6 +909,16 @@ h2 {
   border-bottom: 1px dashed rgb(34 35 58 / 18%);
 }
 
+.assignment-row.is-disabled .finger-number {
+  filter: grayscale(0.45);
+  opacity: 0.42;
+}
+
+.assignment-row.is-disabled input {
+  border-style: dashed;
+  background: rgb(255 255 255 / 42%);
+}
+
 .finger-number {
   display: grid;
   place-items: center;

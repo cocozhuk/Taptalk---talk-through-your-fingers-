@@ -45,6 +45,7 @@ normative detail is in [`ARCHITECTURE_SPEC.md`](ARCHITECTURE_SPEC.md).
 | A-009 | Tracking/camera recovery starts a new session when appropriate, disarms affected fingers, rejects stale/duplicate events, and preserves configuration. Speech failure is visible, is not auto-retried, and does not undo visual activation. | Accepted for prototype. Recovery cannot create speech without a new deliberate contact. |
 | A-010 | Invalid saved configuration is never spoken. A complete valid factory configuration is used in memory without overwriting bad stored data until explicit reset or replacement. | Accepted for prototype. This keeps the product usable while making destructive recovery user-controlled. |
 | A-011 | Tracking events are session/frame correlated and idempotent; App State dispatches one visual effect and one speech request from one assignment snapshot per accepted activation. Integration preempts the active request before starting every newer request, regardless of finger. | Accepted for prototype. This provides deterministic, global newest-tap replay without a delayed backlog. |
+| A-012 | An empty assignment disables that finger. Disabled fingers retain their slot but expose no marker or label, warm no voice buffer, and produce no activation or speech. | Accepted after first-group user feedback so people may use any number from zero to eight active fingertip controls. |
 
 ## Provisional recommendations
 

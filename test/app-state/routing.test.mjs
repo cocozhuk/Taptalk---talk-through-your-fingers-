@@ -176,6 +176,25 @@ test("does not consume a malformed batch", () => {
   assert.equal(result.state, initialState);
 });
 
+test("contacts for empty assignments create no activation or speech", () => {
+  const configuration = makeConfiguration();
+  configuration.assignments.left_index.text = "";
+  const result = routeContactBatch(createRouterState(), configuration, {
+    frameSequence: 0,
+    contacts: [
+      {
+        eventId: "disabled-contact",
+        fingerId: "left_index",
+        confirmedAtMs: 1,
+      },
+    ],
+  });
+
+  assert.deepEqual(result.activations, []);
+  assert.deepEqual(result.uiNotifications, []);
+  assert.deepEqual(result.speechRequests, []);
+});
+
 test("dispatches all visual feedback before starting speech without serialization", async () => {
   const routed = routeContactBatch(createRouterState(), makeConfiguration(), {
     frameSequence: 0,

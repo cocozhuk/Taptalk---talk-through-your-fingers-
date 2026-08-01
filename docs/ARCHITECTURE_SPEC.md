@@ -53,7 +53,7 @@ Mirroring the preview must not change an ID.
 
 ### Stored assignment
 
-Each of the eight finger IDs has exactly one saved assignment:
+Each of the eight finger IDs has exactly one saved assignment slot:
 
 ```text
 Assignment {
@@ -63,10 +63,12 @@ Assignment {
 }
 ```
 
-`language` is an explicit user choice and is the only source of truth for
-validation and voice routing. Script inspection validates that choice; it must
-not silently change it. An editor may hold an invalid draft, but invalid or
-empty text must never replace the last valid saved assignment.
+For non-empty text, `language` is derived from the expression and controls voice
+routing. An empty normalized `text` is a valid disabled slot; its retained
+language value is ignored. Disabled slots must not warm a voice, display a
+fingertip marker or label, emit an activation, interrupt speech, or enter a
+recording overlay. An editor may hold an invalid non-empty draft, but that draft
+must never replace the last valid saved assignment.
 
 Saving is atomic: normalize, validate, then replace both `text` and `language`
 together. Live activations continue to use the last valid saved assignment

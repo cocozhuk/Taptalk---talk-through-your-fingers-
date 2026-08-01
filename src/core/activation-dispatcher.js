@@ -72,10 +72,14 @@ export class ActivationDispatcher {
         event.sessionId,
         Math.max(latestFrame, event.frameId),
       );
-      this.remember(activationId);
 
       const config = this.getConfig();
       const assignment = config.assignments[event.fingerId];
+      if (!assignment?.text?.trim()) {
+        continue;
+      }
+
+      this.remember(activationId);
       const voiceId = fixedVoiceIdFor(assignment.language);
       const activation = {
         activationId,

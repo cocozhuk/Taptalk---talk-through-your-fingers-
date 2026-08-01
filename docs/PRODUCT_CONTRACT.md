@@ -18,7 +18,7 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 ## Fixed interaction model
 
 1. A standard webcam observes both hands.
-2. Each of the eight non-thumb fingers owns one editable expression.
+2. Each of the eight non-thumb fingers owns one editable expression slot.
 3. Touching a fingertip to the thumb on the same hand selects that expression.
 4. The interface immediately shows which expression was selected.
 5. A compatible robotic voice speaks the expression.
@@ -29,8 +29,8 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 
 - Exactly eight finger inputs: four non-thumb fingers on each hand.
 - Thumbs are activation controls and never expression inputs.
-- Exactly one expression per finger.
-- Each expression contains between one and five units.
+- Each finger contains one expression or is disabled by saving it blank.
+- Each active expression contains between one and five units.
 - Spoken languages are English and Mandarin Chinese only.
 - Each individual expression uses exactly one language. The eight finger
   assignments may contain a mixture of English and Mandarin expressions.
@@ -48,9 +48,12 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 
 ## Expression validation
 
-Every saved assignment contains an internal `en` or `zh` language derived from
-its expression text. The interface does not ask the user to choose a language.
-Text is normalized to Unicode NFC and trimmed before validation.
+Every non-empty saved assignment contains an internal `en` or `zh` language
+derived from its expression text. The interface does not ask the user to choose
+a language. Text is normalized to Unicode NFC and trimmed before validation.
+An empty normalized expression is valid and disables that finger. A disabled
+finger has no fingertip dot or label and its contacts create no activation,
+visual feedback, speech request, or recording overlay.
 
 ### English
 

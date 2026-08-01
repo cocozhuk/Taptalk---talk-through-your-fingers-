@@ -126,6 +126,7 @@ function assignments() {
   return {
     left_index: { language: "en", text: "Hello" },
     left_middle: { language: "en", text: "Hello" },
+    left_ring: { language: "en", text: "" },
     right_index: { language: "zh", text: "你好" },
   };
 }

@@ -218,6 +218,9 @@ export function routeContactBatch(routerState, configuration, batch) {
 
     const assignment =
       checkedConfiguration.configuration.assignments[contact.fingerId];
+    if (!assignment.text) {
+      continue;
+    }
     const voice = resolveVoiceIdentity(
       checkedConfiguration.configuration,
       assignment.language,

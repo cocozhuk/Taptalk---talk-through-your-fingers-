@@ -107,6 +107,39 @@ test("landmark loss removes all fingertip and thumb markers for that hand", () =
   assert.equal(thumbMarkers.get("right").hidden, true);
 });
 
+test("empty assignments keep their fingertip marker hidden", () => {
+  const fingerMarkers = new Map(
+    FINGER_IDS.map((fingerId) => [fingerId, marker()]),
+  );
+  const thumbMarkers = new Map([
+    ["left", marker()],
+    ["right", marker()],
+  ]);
+  const view = Object.create(AppView.prototype);
+  view.enabledFingerIds = new Set(
+    FINGER_IDS.filter((fingerId) => fingerId !== "left_index"),
+  );
+  view.elements = {
+    fingerOverlay: { dataset: {} },
+  };
+  view.marker = (fingerId) => fingerMarkers.get(fingerId);
+  view.thumbMarker = (hand) => thumbMarkers.get(hand);
+  view.positionMarker = (target, point) => target.positions.push(point);
+
+  view.applyHandLandmarks([
+    {
+      handedness: "left",
+      landmarks: Array.from({ length: 21 }, (_, index) => ({
+        x: 0.2 + index / 100,
+        y: 0.3 + index / 100,
+      })),
+    },
+  ]);
+
+  assert.equal(fingerMarkers.get("left_index").hidden, true);
+  assert.equal(fingerMarkers.get("left_middle").hidden, false);
+});
+
 test("a zero-hand tracking status force-hides every live marker", () => {
   const fingerMarkers = new Map(
     FINGER_IDS.map((fingerId) => [fingerId, marker()]),

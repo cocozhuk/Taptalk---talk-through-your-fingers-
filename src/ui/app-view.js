@@ -81,6 +81,7 @@ export class AppView {
     this.renderFingerMarkers();
     this.renderThumbMarkers();
     this.renderAssignmentFields();
+    this.enabledFingerIds = new Set(FINGER_IDS);
     this.cameraAvailable = true;
     this.cameraState = "off";
     this.recordingState = "idle";
@@ -140,6 +141,7 @@ export class AppView {
             name="${fingerId}_text"
             data-expression="${fingerId}"
             autocomplete="off"
+            placeholder="Leave blank to disable"
             aria-describedby="${fingerId}-error"
           />
           <small id="${fingerId}-error" data-error="${fingerId}"></small>
@@ -150,17 +152,41 @@ export class AppView {
   }
 
   renderConfig(config) {
+    this.enabledFingerIds = new Set(
+      FINGER_IDS.filter(
+        (fingerId) => config.assignments[fingerId].text.trim().length > 0,
+      ),
+    );
     for (const fingerId of FINGER_IDS) {
+      const assignment = config.assignments[fingerId];
+      const enabled = this.isFingerEnabled(fingerId);
       this.expressionInput(fingerId).value =
-        config.assignments[fingerId].text;
+        assignment.text;
       const marker = this.marker(fingerId);
       marker.querySelector(".marker-label").textContent =
-        config.assignments[fingerId].text;
+        assignment.text;
+      marker.disabled = !enabled;
+      marker.dataset.enabled = String(enabled);
+      marker.tabIndex = enabled ? 0 : -1;
       const markerIndex = FINGER_IDS.indexOf(fingerId) + 1;
       marker.setAttribute(
         "aria-label",
-        `${FINGER_LABELS[fingerId]}, ${config.assignments[fingerId].text}, manual contact keyboard ${markerIndex}`,
+        enabled
+          ? `${FINGER_LABELS[fingerId]}, ${assignment.text}, manual contact keyboard ${markerIndex}`
+          : `${FINGER_LABELS[fingerId]} disabled`,
       );
+      this.expressionInput(fingerId)
+        .closest(".assignment-row")
+        ?.classList.toggle("is-disabled", !enabled);
+      if (!enabled) {
+        setLiveMarkerVisibility(marker, false);
+        marker.classList.remove("is-active");
+      } else if (
+        !this.elements.fingerOverlay.classList.contains("is-live-tracking")
+      ) {
+        marker.hidden = false;
+        marker.style.removeProperty("display");
+      }
       this.setFieldError(fingerId, "");
     }
   }
@@ -176,7 +202,7 @@ export class AppView {
             language:
               detectExpressionLanguage(
                 this.expressionInput(fingerId).value,
-              ) ?? "",
+              ) ?? "en",
           },
         ]),
       ),
@@ -257,7 +283,10 @@ export class AppView {
 
   applyTrackingEvent(event) {
     const marker = this.marker(event.fingerId);
-    if (!marker) {
+    if (!marker || !this.isFingerEnabled(event.fingerId)) {
+      if (marker) {
+        setLiveMarkerVisibility(marker, false);
+      }
       return;
     }
     marker.classList.toggle("is-active", event.type === "activation");
@@ -274,6 +303,12 @@ export class AppView {
     for (const fingerId of FINGER_IDS) {
       const marker = this.marker(fingerId);
       const snapshot = byFinger.get(fingerId);
+      if (!this.isFingerEnabled(fingerId)) {
+        setLiveMarkerVisibility(marker, false);
+        marker.classList.remove("is-active");
+        marker.dataset.trackingState = "disabled";
+        continue;
+      }
       marker.classList.toggle(
         "is-active",
         snapshot?.state === "activated" || snapshot?.state === "held",
@@ -317,7 +352,8 @@ export class AppView {
           FINGERTIP_PREVIOUS_LANDMARK_INDEX[fingerName]
         ];
       const marker = this.marker(fingerId);
-      const visible = isVisualPoint(point);
+      const visible =
+        this.isFingerEnabled(fingerId) && isVisualPoint(point);
       setLiveMarkerVisibility(marker, visible);
       if (visible) {
         this.positionMarker(
@@ -413,8 +449,13 @@ export class AppView {
     delete this.elements.fingerOverlay.dataset.trackedHands;
     for (const [fingerId, [x, y]] of Object.entries(DEMO_POSITIONS)) {
       const marker = this.marker(fingerId);
-      marker.hidden = false;
-      marker.style.removeProperty("display");
+      const enabled = this.isFingerEnabled(fingerId);
+      marker.hidden = !enabled;
+      if (enabled) {
+        marker.style.removeProperty("display");
+      } else {
+        marker.style.setProperty("display", "none");
+      }
       marker.classList.remove("is-tracked", "is-active");
       marker.dataset.trackingState = "not_visible";
       marker.style.setProperty("--marker-x", `${x}%`);
@@ -513,6 +554,14 @@ export class AppView {
     return this.elements.fingerOverlay.querySelector(
       `[data-finger-id="${fingerId}"]`,
     );
+  }
+
+  isFingerEnabled(fingerId) {
+    return !this.enabledFingerIds || this.enabledFingerIds.has(fingerId);
+  }
+
+  activeFingerCount() {
+    return this.enabledFingerIds?.size ?? FINGER_IDS.length;
   }
 
   thumbMarker(hand) {

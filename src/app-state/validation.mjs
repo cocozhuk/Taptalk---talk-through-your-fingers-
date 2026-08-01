@@ -3,7 +3,6 @@ const LETTER = /^\p{Letter}$/u;
 const HAN_SCRIPT = /^\p{Script=Han}$/u;
 
 const ERROR_MESSAGES = Object.freeze({
-  empty: "Enter an expression containing between one and five units.",
   mixed_language:
     "Use one language in this expression. English and Mandarin can be mixed across fingers, but not within one assignment.",
   ambiguous_characters:
@@ -50,7 +49,14 @@ export function validateExpression(input) {
 
   const normalized = input.normalize("NFC").trim();
   if (normalized.length === 0) {
-    return failure("empty");
+    return {
+      ok: true,
+      value: {
+        text: "",
+        language: "en",
+        unitCount: 0,
+      },
+    };
   }
 
   const characters = Array.from(normalized);
