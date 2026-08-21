@@ -3,7 +3,7 @@
 Status: desktop and shared-code iPhone web prototype approved for production
 release
 
-Last updated: 2026-08-01
+Last updated: 2026-08-21
 
 ## Verified in the current prototype
 
@@ -37,8 +37,11 @@ Last updated: 2026-08-01
 - The manual press-and-hold harness suppresses repeated activation until
   release, works with pointer or keyboard input, and remains a fallback.
 - Latency instrumentation reports sample count, median, and 95th percentile.
-- The automated regression suite contains 130 passing tests and the production
+- The automated regression suite contains 134 passing tests and the production
   build completes successfully.
+- Vercel Web Analytics initializes only on `vercel.app` deployments and emits
+  page views without custom TapTalk interaction data; every non-Vercel host,
+  including localhost and private-network iPhone testing, remains analytics-free.
 - One codebase now selects a stable iPhone presentation from device identity
   while preserving the macOS desktop workspace and excluding iPad.
 - The iPhone flow separates tutorial, eight-expression setup, camera choice,

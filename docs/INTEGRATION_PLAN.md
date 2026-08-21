@@ -39,10 +39,13 @@ the application-facing interfaces below.
   through `MediaRecorder` as a local download.
 - Assignments and fixed legacy routing compatibility values use browser
   `localStorage`.
-- No account or analytics service is part of the prototype architecture.
+- No user account is part of the prototype architecture. Vercel deployments
+  initialize Vercel Web Analytics for anonymous page views only; non-Vercel
+  hosts, including local and private-network testing, do not initialize it.
   Hosted Mandarin sends only the selected expression text to TapTalk's
-  same-origin synthesis function; camera frames, landmarks, configuration, and
-  recordings remain in the browser.
+  same-origin synthesis function; camera frames, landmarks, configuration,
+  voice activity, and recordings remain outside analytics and are not uploaded
+  by TapTalk.
 
 ## Module boundaries
 

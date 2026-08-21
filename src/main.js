@@ -1,9 +1,9 @@
-import { inject } from "@vercel/analytics";
 import { BrowserCamera } from "./adapters/browser-camera.js";
 import { BrowserRecorder } from "./adapters/browser-recorder.js";
 import { ManualContactTracker } from "./adapters/manual-contact-tracker.js";
 import { MediaPipeHandTracker } from "./adapters/mediapipe-hand-tracker.js";
 import { PiperVoicePort } from "./adapters/piper-voice.js";
+import { startVercelAnalytics } from "./adapters/vercel-analytics.js";
 import { ActivationDispatcher } from "./core/activation-dispatcher.js";
 import {
   ConfigRepository,
@@ -21,6 +21,14 @@ import {
   remove as removePiperVoice,
   TtsSession,
 } from "/vendor/piper/piper-tts-web.js";
+import {
+  inject as injectVercelAnalytics,
+} from "/vendor/vercel-analytics/index.mjs";
+
+startVercelAnalytics({
+  injectAnalytics: injectVercelAnalytics,
+  locationLike: window.location,
+});
 
 const interfaceMode = selectInterfaceMode();
 const view = new AppView(document, { interfaceMode });
@@ -174,7 +182,7 @@ const stopRecordingAndSave = async () => {
     recordingActive = false;
     view.setRecordingState(
       "idle",
-      `Saved ${filename} to your browser downloads. Nothing was uploaded.`,
+      `Saved ${filename} to your browser downloads. No recording data was uploaded.`,
     );
     return filename;
   } catch (error) {
@@ -338,7 +346,7 @@ const saveConfigDraft = async () => {
     return false;
   }
   view.setSettingsStatus(
-    `Saved on this device. ${view.activeFingerCount()} fingertip controls active. Nothing was uploaded.`,
+    `Saved on this device. ${view.activeFingerCount()} fingertip controls active. Your assignments stay on this device.`,
     "success",
   );
   return true;

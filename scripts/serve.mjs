@@ -179,6 +179,10 @@ function resolvePublicPath(pathname) {
       prefix: "/vendor/onnxruntime/",
       root: resolve(projectRoot, "node_modules/onnxruntime-web/dist"),
     },
+    {
+      prefix: "/vendor/vercel-analytics/",
+      root: resolve(projectRoot, "node_modules/@vercel/analytics/dist"),
+    },
   ];
 
   const route = routes.find(({ prefix }) => pathname.startsWith(prefix));

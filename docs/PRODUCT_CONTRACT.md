@@ -192,6 +192,10 @@ untracked
   active. The saved video must contain the mirrored camera, visible fingertip
   markers and expression labels, and TapTalk speech audio. Stopping creates a
   local browser download; TapTalk must not upload or retain a copy.
+- Vercel deployments may send anonymous page-view events through Vercel
+  Web Analytics. TapTalk must not attach finger assignments, expressions,
+  camera or landmark data, voice activity, or recording data, and it must not
+  emit analytics from any non-Vercel host.
 - The user must receive a clear camera-permission explanation and a visible
   indication when the camera or recorder is active.
 - Resetting TapTalk must provide a clear way to remove stored configuration.

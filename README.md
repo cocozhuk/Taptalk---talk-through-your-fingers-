@@ -6,7 +6,7 @@
   [![First prototype](https://img.shields.io/badge/status-first_prototype-ff91c8?style=flat-square&labelColor=17264a)](#prototype-status)
   [![Local first](https://img.shields.io/badge/privacy-local_first-a8dc34?style=flat-square&labelColor=17264a)](#privacy)
   [![English + 中文](https://img.shields.io/badge/languages-English_%2B_中文-80d8f7?style=flat-square&labelColor=17264a)](#the-product-rules)
-  [![130 tests](https://img.shields.io/badge/tests-130_passing-a514ff?style=flat-square&labelColor=17264a)](#testing)
+  [![134 tests](https://img.shields.io/badge/tests-134_passing-a514ff?style=flat-square&labelColor=17264a)](#testing)
 
   **A camera-based communication interface that lets you talk through deliberate fingertip taps.**
 
@@ -201,8 +201,13 @@ TapTalk is local-first:
 - English speech is generated locally in the browser;
 - Mandarin expression text is processed locally by the desktop worker or sent
   to TapTalk's same-origin Matcha function on the hosted prototype;
+- Vercel deployments use Vercel Web Analytics for anonymous page views;
+  analytics is disabled on every non-Vercel host, including localhost and
+  private-network iPhone test URLs, and TapTalk sends no custom interaction
+  events;
 - recordings are downloaded directly by the browser;
-- camera frames, landmarks, saved expressions, and recordings are not uploaded.
+- camera frames, landmarks, saved expressions, voice activity, and recordings
+  are never sent to analytics or uploaded by TapTalk.
 
 Camera access is requested only after the user selects **Start camera**.
 Microphone access is not required because TapTalk records its own generated
@@ -242,7 +247,7 @@ acceptance coverage.
 
 ## Testing
 
-The current prototype has **130 passing automated tests** covering:
+The current prototype has **134 passing automated tests** covering:
 
 - expression and configuration validation;
 - assignment persistence and migration;
@@ -257,6 +262,7 @@ The current prototype has **130 passing automated tests** covering:
 - fingertip overlay and tracking feedback;
 - stable iPhone-versus-desktop interface selection;
 - iPhone setup, camera-choice, recording, failure, and exit lifecycles.
+- Vercel-only analytics initialization with local and LAN collection disabled.
 
 Run everything before a release:
 

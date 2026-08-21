@@ -19,12 +19,22 @@ const onnxRuntimeDirectory = resolve(
   projectRoot,
   "node_modules/onnxruntime-web/dist",
 );
+const vercelAnalyticsPackageDirectory = resolve(
+  projectRoot,
+  "node_modules/@vercel/analytics",
+);
+const vercelAnalyticsDirectory = resolve(
+  vercelAnalyticsPackageDirectory,
+  "dist",
+);
 const requiredInputs = [
   "index.html",
   "voice-lab.html",
   "src/main.js",
   "src/styles.css",
   "assets/models/hand_landmarker.task",
+  "node_modules/@vercel/analytics/LICENSE",
+  "node_modules/@vercel/analytics/dist/index.mjs",
   "node_modules/@mediapipe/tasks-vision/vision_bundle.mjs",
 ];
 
@@ -94,5 +104,16 @@ for (const filename of [
     resolve(outputDirectory, "vendor/onnxruntime", filename),
   );
 }
+await mkdir(resolve(outputDirectory, "vendor/vercel-analytics"), {
+  recursive: true,
+});
+await cp(
+  resolve(vercelAnalyticsDirectory, "index.mjs"),
+  resolve(outputDirectory, "vendor/vercel-analytics/index.mjs"),
+);
+await cp(
+  resolve(vercelAnalyticsPackageDirectory, "LICENSE"),
+  resolve(outputDirectory, "vendor/vercel-analytics/LICENSE"),
+);
 
 console.log("Built static TapTalk prototype in dist/");
