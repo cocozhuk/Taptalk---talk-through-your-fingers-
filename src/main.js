@@ -1,3 +1,4 @@
+import { inject } from "@vercel/analytics";
 import { BrowserCamera } from "./adapters/browser-camera.js";
 import { BrowserRecorder } from "./adapters/browser-recorder.js";
 import { ManualContactTracker } from "./adapters/manual-contact-tracker.js";
