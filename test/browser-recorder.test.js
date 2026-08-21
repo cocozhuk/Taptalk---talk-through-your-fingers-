@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BrowserRecorder } from "../src/adapters/browser-recorder.js";
+import {
+  BrowserRecorder,
+  projectSourcePointToRecording,
+} from "../src/adapters/browser-recorder.js";
 
 class FakeMediaStream {
   constructor(tracks) {
@@ -20,6 +23,131 @@ class FakeMediaStream {
     return this.tracks.filter((track) => track.kind === "audio");
   }
 }
+
+test("remaps source landmarks into the fixed 16:9 recording crop", () => {
+  assert.deepEqual(
+    projectSourcePointToRecording(
+      { x: 0.5, y: 0.5 },
+      640,
+      480,
+      1280,
+      720,
+    ),
+    { x: 640, y: 360 },
+  );
+  assert.deepEqual(
+    projectSourcePointToRecording(
+      { x: 0.25, y: 0.25 },
+      1920,
+      1080,
+      1280,
+      720,
+    ),
+    { x: 320, y: 180 },
+  );
+  assert.equal(
+    projectSourcePointToRecording(
+      { x: Number.NaN, y: 0.5 },
+      640,
+      480,
+      1280,
+      720,
+    ),
+    null,
+  );
+});
+
+test("maps the visible 16:9 band of a portrait camera into the recording", () => {
+  const sourceWidth = 720;
+  const sourceHeight = 1280;
+  const visibleCropHeight = sourceWidth / (16 / 9);
+  const topOfVisibleCrop = (sourceHeight - visibleCropHeight) / 2;
+  const topY = topOfVisibleCrop / sourceHeight;
+  const bottomY = (topOfVisibleCrop + visibleCropHeight) / sourceHeight;
+
+  assert.deepEqual(
+    projectSourcePointToRecording(
+      { x: 0.5, y: 0.5 },
+      sourceWidth,
+      sourceHeight,
+      1280,
+      720,
+    ),
+    { x: 640, y: 360 },
+  );
+  assert.deepEqual(
+    projectSourcePointToRecording(
+      { x: 0, y: topY },
+      sourceWidth,
+      sourceHeight,
+      1280,
+      720,
+    ),
+    { x: 0, y: 0 },
+  );
+  const bottom = projectSourcePointToRecording(
+    { x: 1, y: bottomY },
+    sourceWidth,
+    sourceHeight,
+    1280,
+    720,
+  );
+  assert.equal(bottom.x, 1280);
+  assert.ok(Math.abs(bottom.y - 720) < Number.EPSILON * 720);
+});
+
+test("rejects invalid recording dimensions without producing marker positions", () => {
+  assert.equal(
+    projectSourcePointToRecording({ x: 0.5, y: 0.5 }, 0, 1280, 1280, 720),
+    null,
+  );
+  assert.equal(
+    projectSourcePointToRecording({ x: 0.5, y: 0.5 }, 720, 1280, 0, 720),
+    null,
+  );
+});
+
+test("recorded labels use portrait source coordinates and omit hidden fingers", () => {
+  const arcs = [];
+  const labels = [];
+  const visible = marker();
+  visible.dataset.sourceX = "0.5";
+  visible.dataset.sourceY = "0.5";
+  const hidden = marker();
+  hidden.hidden = true;
+  hidden.dataset.sourceX = "0.25";
+  hidden.dataset.sourceY = "0.25";
+  const recorder = new BrowserRecorder({
+    getComputedStyle: () => ({
+      display: "block",
+      visibility: "visible",
+      opacity: "1",
+      getPropertyValue: () => "#ff91c8",
+    }),
+  });
+  recorder.videoElement = { videoWidth: 720, videoHeight: 1280 };
+  recorder.overlayElement = {
+    querySelectorAll: () => [visible, hidden],
+  };
+  recorder.drawMarkers(
+    {
+      beginPath() {},
+      arc(x, y) {
+        arcs.push([x, y]);
+      },
+      fill() {},
+      stroke() {},
+      fillText(label, x, y) {
+        labels.push([label, x, y]);
+      },
+    },
+    1280,
+    720,
+  );
+
+  assert.deepEqual(arcs, [[640, 360]]);
+  assert.deepEqual(labels, [["slay", 640, 349]]);
+});
 
 class FakeMediaRecorder extends EventTarget {
   static isTypeSupported(type) {

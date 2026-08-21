@@ -52,6 +52,20 @@ test("detects English or Mandarin directly from expression text", () => {
   assert.equal(detectExpressionLanguage(""), null);
 });
 
+test("an empty expression disables its finger without a validation error", () => {
+  assert.deepEqual(validateExpression("  ", ""), {
+    valid: true,
+    normalizedText: "",
+    units: 0,
+    disabled: true,
+    error: "",
+  });
+
+  const config = createDefaultConfig();
+  config.assignments.left_index = { text: "", language: "en" };
+  assert.equal(validateConfig(config).valid, true);
+});
+
 test("configuration contains exactly eight valid assignments", () => {
   const config = createDefaultConfig();
   assert.equal(validateConfig(config).valid, true);
@@ -69,6 +83,10 @@ test("repository persists valid local configuration and resets it", () => {
   repository.save(config);
   assert.equal(repository.load().assignments.left_index.text, "Help me");
   assert.ok(storage.getItem(STORAGE_KEY));
+
+  config.assignments.left_middle.text = "";
+  repository.save(config);
+  assert.equal(repository.load().assignments.left_middle.text, "");
 
   const defaults = repository.reset();
   assert.equal(storage.getItem(STORAGE_KEY), null);

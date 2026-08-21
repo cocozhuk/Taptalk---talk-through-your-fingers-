@@ -11,18 +11,31 @@ import {
   validateConfig,
 } from "./core/config.js";
 import { AppView } from "./ui/app-view.js";
+import { FirstRunExperience } from "./ui/first-run-experience.js";
+import { IPhoneFlow } from "./ui/iphone-flow.js";
+import {
+  localMobileScreenPreview,
+  selectInterfaceMode,
+} from "./ui/interface-mode.js";
 import {
   remove as removePiperVoice,
   TtsSession,
 } from "/vendor/piper/piper-tts-web.js";
 
-// Initialize Vercel Web Analytics
-inject();
-
-const view = new AppView();
+const interfaceMode = selectInterfaceMode();
+const view = new AppView(document, { interfaceMode });
 const repository = new ConfigRepository(window.localStorage);
 const camera = new BrowserCamera();
 const recorder = new BrowserRecorder();
+const firstRunExperience = new FirstRunExperience({
+  storage: window.localStorage,
+  onCameraAvailabilityChange: (available, message) => {
+    view.setCameraAvailability(available, message);
+  },
+  onGuideCompletionChange: (complete) => {
+    iphoneFlow.handleGuideCompletion(complete);
+  },
+});
 const supportNotice = document.querySelector("#support-notice");
 const supportNoticeDismiss = document.querySelector(
   "#support-notice-dismiss",
@@ -33,10 +46,11 @@ const voicePort = new PiperVoicePort({
   removeVoice: removePiperVoice,
   onProgress: ({ modelId, percent }) => {
     const language = modelId.startsWith("zh_") ? "Mandarin" : "English";
+    firstRunExperience.setVoiceProgress({ modelId, percent });
     view.setSettingsStatus(
       percent === null
-        ? `Downloading the approved ${language} voice…`
-        : `Downloading the approved ${language} voice… ${percent}%`,
+        ? `Preparing the approved ${language} voice…`
+        : `Preparing the approved ${language} voice… ${percent}%`,
       "success",
     );
   },
@@ -50,7 +64,11 @@ view.setTrackingMode("manual");
 view.setRecordingState("idle");
 
 const showFirstVisitSupportNotice = () => {
-  if (!supportNotice || !supportNoticeDismiss) {
+  if (
+    view.isIPhoneMode() ||
+    !supportNotice ||
+    !supportNoticeDismiss
+  ) {
     return;
   }
 
@@ -87,23 +105,28 @@ const showFirstVisitSupportNotice = () => {
 showFirstVisitSupportNotice();
 
 const warmVoiceAssignments = () => {
+  firstRunExperience.setVoicePreparing();
   view.setSettingsStatus(
-    "Preparing the two approved Piper voices locally…",
+    "Preparing Piper English and Matcha Mandarin locally…",
     "success",
   );
-  void voicePort
+  return voicePort
     .warmAssignments(config.assignments)
     .then(() => {
+      firstRunExperience.setVoiceReady();
       view.setSettingsStatus(
-        "Piper English and Mandarin voices are ready.",
+        "Piper English and Matcha Mandarin are ready.",
         "success",
       );
+      return true;
     })
     .catch((error) => {
+      firstRunExperience.setVoiceError(error.message);
       view.setSettingsStatus(
-        `Local Piper speech preparation failed: ${error.message}`,
+        `Local voice preparation failed: ${error.message}`,
         "error",
       );
+      return false;
     });
 };
 
@@ -163,6 +186,36 @@ const stopRecordingAndSave = async () => {
   }
 };
 
+const startRecording = async ({ audioPrepared = false } = {}) => {
+  view.setRecordingState(
+    "starting",
+    "Starting local MP4 recording with TapTalk speech audio.",
+  );
+  try {
+    if (!audioPrepared) {
+      await voicePort.prepareRecording();
+    }
+    const recording = await recorder.start({
+      cameraStream: camera.stream,
+      audioStream: voicePort.recordingStream,
+      videoElement: view.elements.cameraPreview,
+      overlayElement: view.elements.fingerOverlay,
+    });
+    recordingActive = true;
+    view.setRecordingState(
+      "recording",
+      `Recording the mirrored camera, fingertip labels, and TapTalk speech locally as ${
+        recording.mimeType.includes("mp4") ? "MP4" : "WebM"
+      }.`,
+    );
+    return true;
+  } catch (error) {
+    voicePort.finishRecording();
+    view.setRecordingState("error", error.message);
+    return false;
+  }
+};
+
 const visionTracker = new MediaPipeHandTracker({
   onEvents: (events) => {
     processTrackingEvents(events);
@@ -184,101 +237,138 @@ const visionTracker = new MediaPipeHandTracker({
   },
 });
 
+const stopCamera = async ({ returnToSetup = false } = {}) => {
+  view.setMobileLiveBusy(true);
+  const filename = await stopRecordingAndSave();
+  visionTracker.stop();
+  camera.stop(view.elements.cameraPreview);
+  cameraActive = false;
+  manualTracker.setEnabled(true);
+  view.setTrackingMode("manual");
+  view.setCameraState(
+    "off",
+    `Camera stopped.${filename ? ` ${filename} was saved locally.` : " No recording was saved."}`,
+  );
+  if (returnToSetup && view.isIPhoneMode()) {
+    view.setMobileScreen("setup");
+  }
+  view.setMobileLiveBusy(false);
+  return filename;
+};
+
+const startCamera = async ({ record = false } = {}) => {
+  let audioPrepared = false;
+  view.setRecordingState(record ? "starting" : "idle");
+  view.setCameraState(
+    "starting",
+    "Your browser may ask for camera permission.",
+  );
+
+  try {
+    if (record) {
+      await voicePort.prepareRecording();
+      audioPrepared = true;
+    } else {
+      await voicePort.unlock();
+    }
+  } catch (error) {
+    view.setCameraState("error", error.message);
+    if (record) {
+      view.setRecordingState("error", error.message);
+    }
+    return false;
+  }
+
+  try {
+    await camera.start(view.elements.cameraPreview);
+    view.setCameraState(
+      "starting",
+      "Loading the local hand-landmark model…",
+    );
+    await visionTracker.start(view.elements.cameraPreview);
+    cameraActive = true;
+    manualTracker.setEnabled(false);
+    view.setTrackingMode("live");
+    view.setCameraState(
+      "active",
+      record
+        ? "Camera and on-device hand tracking are active. Starting the local recording…"
+        : "Camera and on-device hand tracking are active. Recording is off.",
+    );
+  } catch (error) {
+    if (audioPrepared) {
+      voicePort.finishRecording();
+    }
+    visionTracker.stop();
+    camera.stop(view.elements.cameraPreview);
+    cameraActive = false;
+    manualTracker.setEnabled(true);
+    view.setTrackingMode("manual");
+    view.setCameraState(
+      "error",
+      `Camera or hand tracking could not start: ${error.message}`,
+    );
+    if (record) {
+      view.setRecordingState("error", error.message);
+    }
+    return false;
+  }
+
+  if (record) {
+    await startRecording({ audioPrepared });
+  }
+  return true;
+};
+
+const saveConfigDraft = async () => {
+  const draft = view.readConfigDraft();
+  const validation = validateConfig(draft);
+  view.showValidationErrors(validation.errors);
+  if (!validation.valid) {
+    view.setSettingsStatus(
+      "Fix the highlighted assignments before saving.",
+      "error",
+    );
+    return false;
+  }
+  config = repository.save(normalizeConfig(draft));
+  view.renderConfig(config);
+  const voicesReady = await warmVoiceAssignments();
+  if (!voicesReady) {
+    return false;
+  }
+  view.setSettingsStatus(
+    `Saved on this device. ${view.activeFingerCount()} fingertip controls active. Nothing was uploaded.`,
+    "success",
+  );
+  return true;
+};
+
+const iphoneFlow = new IPhoneFlow({
+  view,
+  saveAssignments: saveConfigDraft,
+  startCamera,
+  stopCamera,
+});
+
 view.bind({
   onRecordingToggle: async () => {
     if (recordingActive) {
       await stopRecordingAndSave();
       return;
     }
-    view.setRecordingState(
-      "starting",
-      "Starting local MP4 recording with TapTalk speech audio.",
-    );
-    try {
-      await voicePort.prepareRecording();
-      const recording = await recorder.start({
-        cameraStream: camera.stream,
-        audioStream: voicePort.recordingStream,
-        videoElement: view.elements.cameraPreview,
-        overlayElement: view.elements.fingerOverlay,
-      });
-      recordingActive = true;
-      view.setRecordingState(
-        "recording",
-        `Recording the mirrored camera, fingertip labels, and TapTalk speech locally as ${
-          recording.mimeType.includes("mp4") ? "MP4" : "WebM"
-        }.`,
-      );
-    } catch (error) {
-      voicePort.finishRecording();
-      view.setRecordingState("error", error.message);
-    }
+    await startRecording();
   },
   onCameraToggle: async () => {
     if (cameraActive) {
-      const filename = await stopRecordingAndSave();
-      visionTracker.stop();
-      camera.stop(view.elements.cameraPreview);
-      cameraActive = false;
-      manualTracker.setEnabled(true);
-      view.setTrackingMode("manual");
-      view.setCameraState(
-        "off",
-        `Camera stopped.${filename ? ` ${filename} was saved locally.` : " No recording was saved."}`,
-      );
+      await stopCamera();
       return;
     }
-
-    view.setRecordingState("idle");
-    view.setCameraState(
-      "starting",
-      "Your browser may ask for camera permission.",
-    );
-    try {
-      await camera.start(view.elements.cameraPreview);
-      view.setCameraState(
-        "starting",
-        "Loading the local hand-landmark model…",
-      );
-      await visionTracker.start(view.elements.cameraPreview);
-      cameraActive = true;
-      manualTracker.setEnabled(false);
-      view.setTrackingMode("live");
-      view.setCameraState(
-        "active",
-        "Camera and on-device hand tracking are active. Recording is off.",
-      );
-    } catch (error) {
-      visionTracker.stop();
-      camera.stop(view.elements.cameraPreview);
-      cameraActive = false;
-      manualTracker.setEnabled(true);
-      view.setTrackingMode("manual");
-      view.setCameraState(
-        "error",
-        `Camera or hand tracking could not start: ${error.message}`,
-      );
-    }
+    await startCamera();
   },
   onSave: (event) => {
     event.preventDefault();
-    const draft = view.readConfigDraft();
-    const validation = validateConfig(draft);
-    view.showValidationErrors(validation.errors);
-    if (!validation.valid) {
-      view.setSettingsStatus(
-        "Fix the highlighted assignments before saving.",
-        "error",
-      );
-      return;
-    }
-    config = repository.save(normalizeConfig(draft));
-    view.renderConfig(config);
-    warmVoiceAssignments();
-    view.setSettingsStatus(
-      "Saved on this device. Nothing was uploaded.",
-      "success",
-    );
+    void saveConfigDraft();
   },
   onReset: () => {
     const confirmed = window.confirm(
@@ -289,17 +379,31 @@ view.bind({
     }
     config = repository.reset();
     view.renderConfig(config);
-    warmVoiceAssignments();
+    void warmVoiceAssignments();
     view.setSettingsStatus(
       "Local data removed and defaults restored.",
       "success",
     );
   },
+  onMobileContinue: () => iphoneFlow.continueToCamera(),
+  onMobileCameraChoice: (choice) => iphoneFlow.chooseCamera(choice),
+  onMobileExit: () => iphoneFlow.exitCamera(),
 });
 
-warmVoiceAssignments();
+firstRunExperience.start();
+const previewScreen = localMobileScreenPreview();
+if (previewScreen && view.isIPhoneMode()) {
+  firstRunExperience.hideForLocalPreview();
+  view.setCameraAvailability(
+    true,
+    "Local interface preview. Camera permission has not been requested.",
+  );
+  view.setMobileScreen(previewScreen);
+}
+void warmVoiceAssignments();
 
 window.addEventListener("pagehide", () => {
+  firstRunExperience.destroy();
   manualTracker.destroy();
   visionTracker.destroy();
   if (recordingActive) {

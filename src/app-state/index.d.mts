@@ -27,7 +27,6 @@ export interface Configuration {
 }
 
 export type ValidationErrorCode =
-  | "empty"
   | "mixed_language"
   | "ambiguous_characters"
   | "english_too_many_words"

@@ -1,5 +1,11 @@
 # Robotic voices prototype pipeline
 
+> Historical design exploration — not the active TapTalk voice contract.
+> The current desktop prototype uses two fixed local voices:
+> Piper `en_US-hfc_female-medium` for English and Matcha
+> `matcha-icefall-zh-baker` for Mandarin.
+> The four-identity design below is retained only as research history.
+
 Status: specialist recommendation and isolated browser-audio proof, 2026-07-25
 
 ## Decision

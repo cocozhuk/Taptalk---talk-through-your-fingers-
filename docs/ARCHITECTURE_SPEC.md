@@ -53,7 +53,7 @@ Mirroring the preview must not change an ID.
 
 ### Stored assignment
 
-Each of the eight finger IDs has exactly one saved assignment:
+Each of the eight finger IDs has exactly one saved assignment slot:
 
 ```text
 Assignment {
@@ -63,10 +63,12 @@ Assignment {
 }
 ```
 
-`language` is an explicit user choice and is the only source of truth for
-validation and voice routing. Script inspection validates that choice; it must
-not silently change it. An editor may hold an invalid draft, but invalid or
-empty text must never replace the last valid saved assignment.
+For non-empty text, `language` is derived from the expression and controls voice
+routing. An empty normalized `text` is a valid disabled slot; its retained
+language value is ignored. Disabled slots must not warm a voice, display a
+fingertip marker or label, emit an activation, interrupt speech, or enter a
+recording overlay. An editor may hold an invalid non-empty draft, but that draft
+must never replace the last valid saved assignment.
 
 Saving is atomic: normalize, validate, then replace both `text` and `language`
 together. Live activations continue to use the last valid saved assignment
@@ -409,12 +411,13 @@ or resumed.
 
 ### Locked language routing
 
-The final prototype has no user-facing voice preferences:
+The final prototype has no user-facing voice preferences. Its two local voices
+are fixed by expression language:
 
-| Assignment language | Voice ID |
+| Assignment language | Local voice model |
 |---|---|
-| `en` | `en_masculine` |
-| `zh` | `zh_feminine` |
+| `en` | Piper `en_US-hfc_female-medium` |
+| `zh` | Matcha `matcha-icefall-zh-baker` |
 
 Legacy persisted preference fields may remain temporarily for schema
 compatibility, but dispatch ignores them. There is no per-finger voice setting
@@ -435,8 +438,6 @@ ActivationDispatch {
   language: "en" | "zh"
   voiceId:
     | "en_masculine"
-    | "en_feminine"
-    | "zh_masculine"
     | "zh_feminine"
 }
 ```
@@ -445,6 +446,10 @@ The same snapshot drives immediate visual acknowledgement and the speech
 request. Edits or preference changes after the snapshot affect only future
 activations. A speech backend must reject a language/voice mismatch rather than
 silently substitute another TapTalk identity.
+
+The compatibility IDs in the dispatch snapshot map only to the two local
+models above. The unused feminine-English and masculine-Mandarin compatibility
+values are not active product voices and never appear in the interface.
 
 Each accepted activation submits one speech request. Before submission, any
 unfinished request is interrupted regardless of its finger. The newest request
@@ -573,6 +578,16 @@ validator and be documented by Integration before release.
 - Show stable validation messages for the codes in section 2.
 - Expose no voice preference controls; communicate the two locked
   language-specific defaults where necessary.
+- Select the presentation once from stable device identity: iPhone uses the
+  sequential mobile flow, while macOS, iPad, and unknown devices retain the
+  desktop presentation. Viewport size and rotation must not change this mode.
+- Reuse the same state, adapters, assignment editor, and live camera pipeline
+  in both presentations. The iPhone setup must finish validation and voice
+  preparation before opening its explicit camera/recording choice.
+- Center a 16:9 live stage in the iPhone portrait viewport so its composition
+  matches the recorder's fixed 16:9 crop. Landscape may expand the live stage;
+  every orientation change must immediately remap live landmark labels from
+  their source coordinates and keep text aligned with the current screen.
 
 ### Robotic Voices
 

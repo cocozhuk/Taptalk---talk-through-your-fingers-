@@ -1,5 +1,10 @@
 # Robotic Voices Brief
 
+> Archived initial brief. The released first prototype supersedes this
+> four-identity exploration with two fixed local Piper models:
+> Piper `en_US-hfc_female-medium` and Matcha
+> `matcha-icefall-zh-baker`.
+
 ## Mission
 
 Create four fixed, expressive, clearly synthetic TapTalk voice identities with

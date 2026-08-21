@@ -1,3 +1,9 @@
 dist/
 node_modules/
+.matcha-venv/
+assets/voice-audition/matcha-baker-*.wav
+assets/voice-audition/zf_*.wav
 .DS_Store
+.vercel
+.env*
+.local-certs/

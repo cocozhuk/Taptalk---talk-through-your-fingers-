@@ -100,7 +100,10 @@ export function validateConfiguration(candidate) {
       );
     }
 
-    if (validatedExpression.value.language !== assignment.language) {
+    if (
+      validatedExpression.value.text.length > 0 &&
+      validatedExpression.value.language !== assignment.language
+    ) {
       return error(
         "assignment_language_mismatch",
         `Assignment for ${fingerId} does not match its stored language.`,
@@ -114,7 +117,10 @@ export function validateConfiguration(candidate) {
 
     assignments[fingerId] = {
       text: validatedExpression.value.text,
-      language: validatedExpression.value.language,
+      language:
+        validatedExpression.value.text.length > 0
+          ? validatedExpression.value.language
+          : assignment.language,
     };
   }
 
@@ -162,7 +168,10 @@ export function updateAssignment(configuration, fingerId, text) {
   const next = cloneConfiguration(checkedConfiguration.configuration);
   const assignment = {
     text: checkedExpression.value.text,
-    language: checkedExpression.value.language,
+    language:
+      checkedExpression.value.text.length > 0
+        ? checkedExpression.value.language
+        : checkedConfiguration.configuration.assignments[fingerId].language,
   };
   next.assignments[fingerId] = assignment;
 

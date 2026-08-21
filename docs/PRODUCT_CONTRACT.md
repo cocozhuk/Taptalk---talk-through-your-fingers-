@@ -1,6 +1,6 @@
 # TapTalk Product Contract
 
-Status: architecture-resolved contract for the first prototype (2026-07-25)
+Status: architecture-resolved contract for the first prototype (updated 2026-08-01)
 
 This document is the shared source of truth for every TapTalk specialist. A
 specialist may propose a change, but only the Product Architecture task owns
@@ -18,25 +18,47 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 ## Fixed interaction model
 
 1. A standard webcam observes both hands.
-2. Each of the eight non-thumb fingers owns one editable expression.
+2. Each of the eight non-thumb fingers owns one editable expression slot.
 3. Touching a fingertip to the thumb on the same hand selects that expression.
 4. The interface immediately shows which expression was selected.
 5. A compatible robotic voice speaks the expression.
 6. The fingertip must separate from the thumb before that finger can activate
    again.
 
+## Platform presentation
+
+TapTalk remains one web application and one behavioral implementation.
+
+- macOS keeps the released desktop workspace, including its existing layout
+  and controls.
+- iPhone uses the same tutorial, assignments, validation, voices, hand
+  tracking, activation, storage, and recording implementations in a sequential
+  presentation: tutorial, eight-expression setup, camera choice, then live
+  camera.
+- The iPhone camera choice must appear before camera permission and must offer
+  distinct **Start camera** and **Start camera + record** actions.
+- In portrait, the live iPhone presentation centers a 16:9 camera frame that
+  matches the saved recording crop, with essential controls placed in the
+  surrounding viewport. Rotation remains optional: landscape expands the live
+  camera, continues to permit recording, and must remap fingertip labels into
+  the phone's current reading direction. Rotation does not change the chosen
+  interface mode.
+- iPad and non-iPhone mobile devices do not enter the iPhone presentation.
+- An empty setup field keeps its existing meaning: that finger is completely
+  disabled.
+
 ## Non-negotiable product boundaries
 
 - Exactly eight finger inputs: four non-thumb fingers on each hand.
 - Thumbs are activation controls and never expression inputs.
-- Exactly one expression per finger.
-- Each expression contains between one and five units.
+- Each finger contains one expression or is disabled by saving it blank.
+- Each active expression contains between one and five units.
 - Spoken languages are English and Mandarin Chinese only.
 - Each individual expression uses exactly one language. The eight finger
   assignments may contain a mixture of English and Mandarin expressions.
-- Exactly two locked language voices:
-  - English masculine
-  - Mandarin Chinese young-adult feminine
+- Exactly two locked local language voices:
+  - English: Piper `en_US-hfc_female-medium`
+  - Mandarin Chinese: Matcha `matcha-icefall-zh-baker`
 - Voices must sound deliberately synthetic, mechanical, charming, and
   emotionally expressive.
 - Voice design may draw on broad warm/rough versus clean/bright robot
@@ -48,38 +70,35 @@ interpret sign language, translate arbitrary gestures, or infer user intent.
 
 ## Expression validation
 
-Every saved assignment has an explicit `en` or `zh` language. That declared
-language is the source of truth for validation and voice routing; the prototype
-does not guess or silently change it. Text is normalized to Unicode NFC and
-trimmed before validation.
+Every non-empty saved assignment contains an internal `en` or `zh` language
+derived from its expression text. The interface does not ask the user to choose
+a language. Text is normalized to Unicode NFC and trimmed before validation.
+An empty normalized expression is valid and disables that finger. A disabled
+finger has no fingertip dot or label and its contacts create no activation,
+visual feedback, speech request, or recording overlay.
 
 ### English
 
 - One to five words.
 - A word is a non-empty token separated by whitespace after trimming.
-- English accepts Latin-script words, including accented letters and internal
-  apostrophes or hyphens.
-- A word may have one terminal comma, period, exclamation mark, or question
-  mark. Punctuation does not add a unit.
+- English accepts whitespace-separated Latin-letter words, including accented
+  letters.
 - Han characters, non-Latin letters, digits, emoji, controls, and unsupported
-  symbols are invalid.
+  symbols or punctuation are invalid.
 
 ### Mandarin Chinese
 
 - One to five Chinese characters.
 - Each Han-script Unicode code point counts as one word/unit.
-- Internal comma/enumeration punctuation and one terminal sentence mark are
-  permitted and do not add units.
 - Internal whitespace, Latin or other non-Han letters, digits, emoji, controls,
-  and unsupported symbols are invalid.
+  punctuation, and unsupported symbols are invalid.
 
 ### Mixed-script input
 
 An individual expression containing both English and Mandarin lexical content
-is invalid. The interface must explain that languages can be mixed across
-fingers, but not inside one finger assignment. Script validation does not claim
-to identify natural language: Han-only text declared as `zh` is routed as
-Mandarin.
+is invalid. The interface explains that languages can be mixed across fingers,
+but not inside one finger assignment. Script validation does not claim to
+identify natural language: Han-only text is routed as Mandarin.
 
 The exact accepted grammars, normalization, validation codes, error priority,
 and examples are normative in the Architecture Specification.
@@ -132,15 +151,20 @@ untracked
 
 - The language of the assigned expression determines whether an English or
   Mandarin voice is used.
-- English always routes to `en_masculine`; Mandarin always routes to
-  `zh_feminine`.
+- English always routes to Piper `en_US-hfc_female-medium`; Mandarin always
+  routes to Matcha `matcha-icefall-zh-baker`.
 - There is no user-facing voice preference or per-finger voice selection.
 - An activation snapshots its saved text, language, and current compatible
   voice. Later edits affect only later activations.
 - At most one voice request plays at a time. The newest confirmed activation
   preempts the previous request, regardless of finger.
-- Internal implementation may use a speech engine plus robotic audio
-  processing, but the user-facing interface exposes no voice picker.
+- English speech is synthesized locally with Piper in the browser. Mandarin
+  speech is prepared by the desktop Matcha worker during local use or the
+  same-origin Matcha function when hosted. A one-Han-character assignment is
+  generated inside `开始，{character}，结束`, isolated between the two pauses,
+  faded at its edges, and padded with 150 ms of silence on each side.
+  Two-to-five-character Mandarin expressions use direct Matcha synthesis. The
+  interface exposes no voice picker.
 
 ## Latency target
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TapTalk voice test</title>
+    <title>TapTalk Mandarin voice audition</title>
     <link rel="stylesheet" href="./src/voice-lab.css" />
     <script type="importmap" nonce="taptalk-local-voice-lab">
       {
@@ -15,30 +15,69 @@
   </head>
   <body>
     <main class="voice-lab">
-      <p class="eyebrow">Local prototype</p>
-      <h1>Choose the two TapTalk voices</h1>
+      <p class="eyebrow">Matcha · 150 ms quiet edges</p>
+      <h1>Direct vs softer context-cropped</h1>
       <p class="intro">
-        The first test downloads and caches each 63 MB voice model. Speech is
-        generated inside this browser.
+        Matcha isolates each character from “开始，character，结束”, then adds
+        slightly longer silence before and after it. English is untouched.
       </p>
 
       <div class="voice-grid">
-        <button type="button" data-voice="english">
-          <span>English prototype</span>
-          <strong>Test “Hello, thank you”</strong>
-        </button>
-        <button type="button" data-voice="mandarin">
-          <span>Mandarin prototype</span>
-          <strong>Test “你好，谢谢”</strong>
-        </button>
+        <section class="voice-card">
+          <p>他 · first tone</p>
+          <div class="word-buttons">
+            <button type="button" data-audio="/assets/voice-audition/matcha-direct-ta.wav">Direct</button>
+            <button type="button" data-audio="/assets/voice-audition/matcha-context-ta.wav?v=150ms">150 ms</button>
+          </div>
+        </section>
+
+        <section class="voice-card">
+          <p>来 · second tone</p>
+          <div class="word-buttons">
+            <button type="button" data-audio="/assets/voice-audition/matcha-direct-lai.wav">Direct</button>
+            <button type="button" data-audio="/assets/voice-audition/matcha-context-lai.wav?v=150ms">150 ms</button>
+          </div>
+        </section>
+
+        <section class="voice-card">
+          <p>你 · third tone</p>
+          <div class="word-buttons">
+            <button type="button" data-audio="/assets/voice-audition/matcha-direct-ni.wav">Direct</button>
+            <button type="button" data-audio="/assets/voice-audition/matcha-context-ni.wav?v=150ms">150 ms</button>
+          </div>
+        </section>
+
+        <section class="voice-card">
+          <p>去 · fourth tone</p>
+          <div class="word-buttons">
+            <button type="button" data-audio="/assets/voice-audition/matcha-direct-qu.wav">Direct</button>
+            <button type="button" data-audio="/assets/voice-audition/matcha-context-qu.wav?v=150ms">150 ms</button>
+          </div>
+        </section>
+
+        <section class="voice-card">
+          <p>吗 · neutral tone</p>
+          <div class="word-buttons">
+            <button type="button" data-audio="/assets/voice-audition/matcha-direct-ma.wav">Direct</button>
+            <button type="button" data-audio="/assets/voice-audition/matcha-context-ma.wav?v=150ms">150 ms</button>
+          </div>
+        </section>
+
+        <section class="voice-card">
+          <p>我 · third tone</p>
+          <div class="word-buttons">
+            <button type="button" data-audio="/assets/voice-audition/matcha-direct-wo.wav">Direct</button>
+            <button type="button" data-audio="/assets/voice-audition/matcha-context-wo.wav?v=150ms">150 ms</button>
+          </div>
+        </section>
       </div>
 
       <p id="voice-status" class="status" role="status">
-        Choose either voice to begin.
+        For each character, play Direct first and 150 ms second.
       </p>
       <a href="/">Back to TapTalk</a>
     </main>
 
-    <script type="module" src="./src/voice-lab.js?v=2"></script>
+    <script type="module" src="./src/voice-lab.js?v=10"></script>
   </body>
 </html>

@@ -232,3 +232,20 @@ test("dispatcher ignores malformed and non-activation tracking events", () => {
     [],
   );
 });
+
+test("dispatcher ignores taps from fingers with empty assignments", () => {
+  const config = createDefaultConfig();
+  config.assignments.left_index.text = "";
+  const calls = [];
+  const dispatcher = new ActivationDispatcher({
+    getConfig: () => config,
+    voicePort: {
+      speak(request) {
+        calls.push(request);
+      },
+    },
+  });
+
+  assert.deepEqual(dispatcher.dispatch([event({ frameId: 1 })]), []);
+  assert.deepEqual(calls, []);
+});

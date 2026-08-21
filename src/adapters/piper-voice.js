@@ -5,17 +5,21 @@ import {
 
 export const PIPER_VOICE_MODELS = Object.freeze({
   en: "en_US-hfc_female-medium",
-  zh: "zh_CN-huayan-medium",
 });
 
-const PIPER_MODEL_BY_VOICE_ID = Object.freeze({
+export const LOCAL_VOICE_MODELS = Object.freeze({
+  en: PIPER_VOICE_MODELS.en,
+  zh: "zh_matcha-baker-local",
+});
+
+const MODEL_BY_VOICE_ID = Object.freeze({
   // These legacy TapTalk IDs remain only for saved-configuration
-  // compatibility. Their audio always comes from the approved Piper models.
+  // compatibility. Routing is fixed and not user-selectable.
   en_shelley: PIPER_VOICE_MODELS.en,
-  zh_tingting: PIPER_VOICE_MODELS.zh,
+  zh_tingting: LOCAL_VOICE_MODELS.zh,
 });
 
-const CACHE_REVISION = "piper-approved-pair-v1";
+const CACHE_REVISION = "piper-en-matcha-zh-crop-150ms-v1";
 const DEFAULT_WASM_PATHS = Object.freeze({
   onnxWasm: "/vendor/onnxruntime/",
   piperData: "/vendor/piper-wasm/piper_phonemize.data",
@@ -33,6 +37,7 @@ export class PiperVoicePort {
     AudioContext =
       globalThis.AudioContext ?? globalThis.webkitAudioContext,
     clock = () => performance.now(),
+    fetchImpl = globalThis.fetch?.bind(globalThis),
     onProgress = () => {},
     wasmPaths = DEFAULT_WASM_PATHS,
   } = {}) {
@@ -42,6 +47,9 @@ export class PiperVoicePort {
     if (!AudioContext) {
       throw new Error("Web Audio is unavailable in this browser.");
     }
+    if (!fetchImpl) {
+      throw new Error("Local Matcha speech requests are unavailable.");
+    }
 
     this.TtsSession = TtsSession;
     this.removeVoice = removeVoice;
@@ -49,6 +57,7 @@ export class PiperVoicePort {
     this.recordingDestination =
       this.audioContext.createMediaStreamDestination();
     this.clock = clock;
+    this.fetchImpl = fetchImpl;
     this.onProgress = onProgress;
     this.wasmPaths = wasmPaths;
     this.cache = new Map();
@@ -63,15 +72,19 @@ export class PiperVoicePort {
     return this.recordingDestination.stream;
   }
 
-  async prepareRecording() {
+  async unlock() {
     if (this.audioContext.state !== "running") {
       await this.audioContext.resume();
     }
     if (this.audioContext.state !== "running") {
       throw new Error(
-        "TapTalk audio is locked. Tap the page once and try recording again.",
+        "TapTalk audio is locked. Tap the page once and try again.",
       );
     }
+  }
+
+  async prepareRecording() {
+    await this.unlock();
     if (this.recordingClockSource) {
       return;
     }
@@ -98,26 +111,58 @@ export class PiperVoicePort {
   }
 
   async warmAssignments(assignments) {
-    const grouped = new Map(
-      Object.values(PIPER_VOICE_MODELS).map((modelId) => [modelId, []]),
-    );
+    const grouped = new Map([
+      ["en", []],
+      ["zh", []],
+    ]);
     for (const assignment of Object.values(assignments)) {
+      if (!assignment?.text?.trim()) {
+        continue;
+      }
       const voiceId = fixedVoiceIdFor(assignment.language);
-      const modelId = PIPER_MODEL_BY_VOICE_ID[voiceId];
-      grouped.get(modelId).push({ voiceId, text: assignment.text });
+      grouped
+        .get(assignment.language)
+        .push({ voiceId, text: assignment.text });
     }
 
-    for (const modelId of Object.values(PIPER_VOICE_MODELS)) {
+    for (const language of ["en", "zh"]) {
       const unique = new Map(
         grouped
-          .get(modelId)
+          .get(language)
           .map((request) => [cacheKey(request.voiceId, request.text), request]),
       );
-      await Promise.all(
-        [...unique.values()].map(({ voiceId, text }) =>
-          this.loadBuffer(voiceId, text),
-        ),
-      );
+      const requests = [...unique.values()];
+
+      if (language === "zh") {
+        this.onProgress({
+          loaded: 0,
+          modelId: LOCAL_VOICE_MODELS.zh,
+          percent: 0,
+          total: requests.length,
+        });
+      }
+      for (let index = 0; index < requests.length; index += 1) {
+        const { voiceId, text } = requests[index];
+        await this.loadBuffer(voiceId, text);
+        if (language === "zh") {
+          this.onProgress({
+            loaded: index + 1,
+            modelId: LOCAL_VOICE_MODELS.zh,
+            percent: Math.round(
+              ((index + 1) / Math.max(1, requests.length)) * 100,
+            ),
+            total: requests.length,
+          });
+        }
+      }
+      if (language === "zh" && requests.length === 0) {
+        this.onProgress({
+          loaded: 0,
+          modelId: LOCAL_VOICE_MODELS.zh,
+          percent: 100,
+          total: 0,
+        });
+      }
     }
   }
 
@@ -144,7 +189,21 @@ export class PiperVoicePort {
   }
 
   async synthesizeBuffer(voiceId, text, allowRepair = true) {
-    const modelId = PIPER_MODEL_BY_VOICE_ID[voiceId];
+    const modelId = MODEL_BY_VOICE_ID[voiceId];
+    if (modelId === LOCAL_VOICE_MODELS.zh) {
+      const response = await this.fetchImpl(
+        `/api/matcha-speech?text=${encodeURIComponent(text)}`,
+      );
+      if (!response.ok) {
+        const detail = (await response.text()).trim();
+        throw new Error(
+          detail || "Local Matcha Mandarin speech failed.",
+        );
+      }
+      const audioData = await response.arrayBuffer();
+      return this.audioContext.decodeAudioData(audioData.slice(0));
+    }
+
     try {
       const session = await this.getSession(modelId);
       const blob = await session.predict(text);
